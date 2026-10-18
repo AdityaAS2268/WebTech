@@ -12,6 +12,10 @@ app.get("/api/health", (req, res) => {
   res.json({ message: "Backend is running!" });
 });
 
+// User Profile routes
+const profileRoutes = require("./routes/profileRoutes");
+app.use("/api/profile", profileRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
