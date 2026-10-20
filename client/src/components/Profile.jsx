@@ -57,7 +57,8 @@ export default function Profile() {
         },
         body: JSON.stringify({
           name: user.name,
-          mobile: user.mobile
+          mobile: user.mobile,
+          email: user.email
         })
       });
 
@@ -113,12 +114,13 @@ export default function Profile() {
         <h3>Personal Details</h3>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>Email (Read-only)</label>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>Email</label>
           <input
-            type="email"
+            type="text"
+            placeholder="Enter email"
             value={user.email || ''}
-            disabled
-            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+            onChange={(e) => setUser({ ...user, email: e.target.value })}
+            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
           />
         </div>
 

@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
 
 // PUT /api/profile - Update profile details
 router.put('/', (req, res) => {
-    const { name, mobile } = req.body;
+    const { name, mobile, email } = req.body;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
         return res.status(400).json({
@@ -37,6 +37,9 @@ router.put('/', (req, res) => {
 
     profileData.name = name.trim();
     profileData.mobile = mobile.trim();
+    if (typeof email === 'string') {
+        profileData.email = email.trim();
+    }
 
     return res.json({
         success: true,
