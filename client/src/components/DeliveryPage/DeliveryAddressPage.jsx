@@ -144,7 +144,10 @@ export default function DeliveryAddressPage() {
                         errors={errors}
                     />
 
-
+                    <SelectedDeliveryContinue
+                        selectedAddress={selectedAddress}
+                        continueToDelivery={continueToDelivery}
+                    />
 
                 </div>
 
