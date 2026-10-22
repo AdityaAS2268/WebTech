@@ -398,14 +398,13 @@
 
 
 /* ====================== Edit Address Modal = */
-/* Fullscreen modal backdrop taking full width */
 .modal-backdrop {
     position: fixed;
     z-index: 1000;
     inset: 0;
     width: 100vw;
     height: 100vh;
-    padding: clamp(16px, 3vw, 40px); /* Clean responsive border around the modal */
+    padding: clamp(16px, 3vw, 40px);
     background: rgba(27, 34, 27, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -415,7 +414,6 @@
     box-sizing: border-box;
 }
 
-/* Modal container taking full available width and height */
 .address-modal {
     width: 100%;
     height: 100%;
@@ -432,7 +430,6 @@
     box-sizing: border-box;
 }
 
-/* Inner wrapper to structure header and content cleanly across wide screens */
 .modal-inner-container {
     max-width: 1350px;
     width: 100%;
@@ -447,7 +444,6 @@
     margin-bottom: 28px;
 }
 
-/* Split layout inside the modal */
 .modal-split-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
@@ -470,7 +466,6 @@
     flex: 1;
 }
 
-/* Modal action buttons container */
 .modal-actions {
     display: flex;
     align-items: center;
@@ -493,7 +488,6 @@
     cursor: pointer;
 }
 
-/* Secondary temporary use button */
 .secondary-action-button {
     min-height: 43px;
     padding: 10px 18px;
@@ -515,7 +509,6 @@
     border-radius: 8px;
 }
 
-/* Right-hand helper panel */
 .modal-side-panel {
     background: var(--ss-pale);
     border: 1px solid var(--ss-line);
