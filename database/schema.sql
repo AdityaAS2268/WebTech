@@ -21,3 +21,15 @@ CREATE TABLE IF NOT EXISTS addresses (
     pincode VARCHAR(20) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+-- Sample Seed Data for testing
+INSERT INTO users (user_id, name, email, password, mobile, role, status) VALUES
+(1, 'Jane Doe', 'jane.doe@university.edu', '$2b$10$wY96lP1bQ.v7gD3k7v0N8uY4g6x3Xy5Q6lK1E5w7V0m4N9h8Y2k6K', '9876543210', 'Customer', 'Active'),
+(2, 'John Seller', 'john.seller@marketplace.com', '$2b$10$wY96lP1bQ.v7gD3k7v0N8uY4g6x3Xy5Q6lK1E5w7V0m4N9h8Y2k6K', '9812345678', 'Seller', 'Active'),
+(3, 'Sys Admin', 'admin@marketplace.com', '$2b$10$wY96lP1bQ.v7gD3k7v0N8uY4g6x3Xy5Q6lK1E5w7V0m4N9h8Y2k6K', '9898989898', 'Admin', 'Active')
+ON DUPLICATE KEY UPDATE user_id=user_id;
+
+INSERT INTO addresses (address_id, user_id, address_line, city, state, pincode) VALUES
+(1, 1, 'Hostel Block 4, Room 210, Tech Campus', 'Bengaluru', 'Karnataka', '560001'),
+(2, 1, 'Flat 302, Green Valley Apts', 'Mysuru', 'Karnataka', '570001')
+ON DUPLICATE KEY UPDATE address_id=address_id;

@@ -1,0 +1,211 @@
+/* Profile Module Styles (Phase 2 - 20% Milestone) */
+
+.profile-wrapper {
+  max-width: 720px;
+  margin: 1.5rem auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+.profile-header-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.profile-header-card h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #0f172a;
+}
+
+.profile-header-card p {
+  margin: 0.25rem 0 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+/* Role Badges */
+.role-badge {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.role-customer {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.role-seller {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.role-admin {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.role-super-admin {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #ffffff;
+  border: 1px solid #4338ca;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+/* Tabs Navigation */
+.profile-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.profile-tab-btn {
+  background: none;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s ease;
+}
+
+.profile-tab-btn:hover {
+  color: #0f172a;
+}
+
+.profile-tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+/* Tab Panels */
+.profile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.profile-card h3 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  font-size: 1.2rem;
+  color: #1e293b;
+}
+
+.form-group {
+  margin-bottom: 1.15rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.4rem;
+  color: #334155;
+}
+
+.form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.btn-primary {
+  padding: 0.65rem 1.25rem;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.btn-primary:disabled {
+  background-color: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* Alert Notification */
+.profile-alert {
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.profile-alert-success {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.profile-alert-error {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Work In Progress Placeholder Tab */
+.tab-placeholder {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+}
+
+.tab-placeholder h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: #475569;
+}
+
+.tab-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.badge-source {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}

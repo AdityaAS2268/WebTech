@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import './Profile.css';
 
 /**
- * Profile Component (Starter Prototype)
+ * Profile Component (Phase 2 - 20% Milestone)
  * Module: User Profile & Address Management
  */
 export default function Profile() {
+  const [activeTab, setActiveTab] = useState('personal'); // 'personal' | 'security' | 'addresses'
+
   const [user, setUser] = useState({
+    user_id: 1,
     name: '',
     email: '',
     mobile: '',
-    role: 'Customer'
+    role: 'Customer',
+    status: 'Active'
   });
 
+  const [dataSource, setDataSource] = useState('offline');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: '' }
@@ -23,6 +29,7 @@ export default function Profile() {
       .then((data) => {
         if (data.user) {
           setUser(data.user);
+          setDataSource(data.source || 'connected');
         }
       })
       .catch((err) => {
@@ -39,11 +46,11 @@ export default function Profile() {
     setMessage(null);
 
     // Basic validation
-    if (!user.name.trim()) {
+    if (!user.name || !user.name.trim()) {
       setMessage({ type: 'error', text: 'Name cannot be empty.' });
       return;
     }
-    if (!user.mobile.trim()) {
+    if (!user.mobile || !user.mobile.trim()) {
       setMessage({ type: 'error', text: 'Mobile cannot be empty.' });
       return;
     }
@@ -65,110 +72,167 @@ export default function Profile() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setMessage({ type: 'success', text: data.message || 'Profile updated successfully!' });
+        setMessage({
+          type: 'success',
+          text: data.message || 'Profile updated successfully!'
+        });
         if (data.user) {
-          setUser(data.user);
+          setUser((prev) => ({ ...prev, ...data.user }));
         }
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to update profile.' });
       }
     } catch (err) {
       console.error('Error saving profile:', err);
-      setMessage({ type: 'error', text: 'Could not connect to backend server. Make sure it is running on port 3000.' });
+      setMessage({
+        type: 'error',
+        text: 'Could not connect to backend server. Make sure it is running on port 3000.'
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  const getRoleClass = (role) => {
+    switch (role?.toLowerCase()) {
+      case 'seller':
+        return 'role-seller';
+      case 'admin':
+        return 'role-admin';
+      case 'super admin':
+        return 'role-super-admin';
+      case 'customer':
+      default:
+        return 'role-customer';
+    }
+  };
+
   if (loading) {
     return (
-      <div style={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem', fontFamily: 'sans-serif' }}>
+      <div className="profile-wrapper">
         <p>Loading profile...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem', fontFamily: 'sans-serif' }}>
-      <h2>My Profile</h2>
-      <p style={{ color: '#666' }}>Manage your account settings and personal details.</p>
+    <div className="profile-wrapper">
+      {/* Header with Title and Visual Role Badge */}
+      <div className="profile-header-card">
+        <div>
+          <h2>Account Settings</h2>
+          <p>Manage your profile, delivery addresses, and security</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span className={`role-badge ${getRoleClass(user.role)}`}>
+            {user.role || 'Customer'}
+          </span>
+          {dataSource === 'database' && (
+            <span className="badge-source" title="Connected to MySQL Database">
+              MySQL
+            </span>
+          )}
+        </div>
+      </div>
 
-      {/* Alert Banner */}
+      {/* Global Alert Notification */}
       {message && (
-        <div
-          style={{
-            padding: '0.75rem 1rem',
-            marginBottom: '1rem',
-            borderRadius: '6px',
-            backgroundColor: message.type === 'success' ? '#d1fae5' : '#fee2e2',
-            color: message.type === 'success' ? '#065f46' : '#991b1b',
-            border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`
-          }}
-        >
+        <div className={`profile-alert profile-alert-${message.type}`}>
           {message.text}
         </div>
       )}
 
-      {/* Basic Profile Information Section */}
-      <form onSubmit={handleSave} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '1.25rem', marginTop: '1rem' }}>
-        <h3>Personal Details</h3>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>Email</label>
-          <input
-            type="text"
-            placeholder="Enter email"
-            value={user.email || ''}
-            onChange={(e) => setUser({ ...user, email: e.target.value })}
-            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>Name</label>
-          <input
-            type="text"
-            placeholder="Enter name"
-            value={user.name || ''}
-            onChange={(e) => setUser({ ...user, name: e.target.value })}
-            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>Mobile</label>
-          <input
-            type="text"
-            placeholder="Enter mobile number"
-            value={user.mobile || ''}
-            onChange={(e) => setUser({ ...user, mobile: e.target.value })}
-            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
-          />
-        </div>
-
+      {/* Tab Navigation */}
+      <div className="profile-tabs">
         <button
-          type="submit"
-          disabled={saving}
-          style={{
-            padding: '0.5rem 1.25rem',
-            background: saving ? '#93c5fd' : '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: saving ? 'not-allowed' : 'pointer'
-          }}
+          className={`profile-tab-btn ${activeTab === 'personal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('personal')}
         >
-          {saving ? 'Saving...' : 'Save Changes'}
+          Personal Info
         </button>
-      </form>
-
-      {/* Upcoming Sections (Work in progress) */}
-      <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9f9f9', borderRadius: '8px', border: '1px dashed #ccc' }}>
-        <h4>Address Book & Security (In Progress)</h4>
-        <p style={{ margin: 0, fontSize: '0.9rem', color: '#777' }}>
-          Address management and password change functionality will be implemented here.
-        </p>
+        <button
+          className={`profile-tab-btn ${activeTab === 'security' ? 'active' : ''}`}
+          onClick={() => setActiveTab('security')}
+        >
+          Security
+        </button>
+        <button
+          className={`profile-tab-btn ${activeTab === 'addresses' ? 'active' : ''}`}
+          onClick={() => setActiveTab('addresses')}
+        >
+          Address Book
+        </button>
       </div>
+
+      {/* Tab 1: Personal Details */}
+      {activeTab === 'personal' && (
+        <form onSubmit={handleSave} className="profile-card">
+          <h3>Personal Details</h3>
+
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="text"
+              placeholder="Enter email"
+              value={user.email || ''}
+              onChange={(e) => setUser({ ...user, email: e.target.value })}
+              className="form-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Full Name</label>
+            <input
+              type="text"
+              placeholder="Enter name"
+              value={user.name || ''}
+              onChange={(e) => setUser({ ...user, name: e.target.value })}
+              className="form-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Mobile Number</label>
+            <input
+              type="text"
+              placeholder="Enter mobile number"
+              value={user.mobile || ''}
+              onChange={(e) => setUser({ ...user, mobile: e.target.value })}
+              className="form-input"
+            />
+          </div>
+
+          <button type="submit" disabled={saving} className="btn-primary">
+            {saving ? 'Saving Changes...' : 'Save Changes'}
+          </button>
+        </form>
+      )}
+
+      {/* Tab 2: Security (Password Change wireframe) */}
+      {activeTab === 'security' && (
+        <div className="profile-card">
+          <h3>Password & Security</h3>
+          <div className="tab-placeholder">
+            <h4>Password Change (Next Milestone)</h4>
+            <p>
+              Current password verification and new password complexity validation (bcrypt) will be implemented here.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Address Book (Addresses list wireframe) */}
+      {activeTab === 'addresses' && (
+        <div className="profile-card">
+          <h3>Saved Addresses</h3>
+          <div className="tab-placeholder">
+            <h4>Address Book (Next Milestone)</h4>
+            <p>
+              Delivery addresses (1:N relation with users) with Add, Edit, and Delete actions will be implemented here.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
