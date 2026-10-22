@@ -394,6 +394,198 @@
 }
 .save-button { width: auto; min-height: 43px; padding: 10px 19px; border-radius: 8px; }
 
+
+
+
+/* ====================== Edit Address Modal = */
+/* Fullscreen modal backdrop taking full width */
+.modal-backdrop {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    padding: clamp(16px, 3vw, 40px); /* Clean responsive border around the modal */
+    background: rgba(27, 34, 27, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* Modal container taking full available width and height */
+.address-modal {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: clamp(24px, 4vw, 48px);
+    border: 1px solid #e7e9e1;
+    border-radius: 18px;
+    background: var(--ss-paper);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* Inner wrapper to structure header and content cleanly across wide screens */
+.modal-inner-container {
+    max-width: 1350px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.modal-header {
+    width: 100%;
+    margin-bottom: 28px;
+}
+
+/* Split layout inside the modal */
+.modal-split-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+    gap: clamp(30px, 5vw, 70px);
+    align-items: start;
+    width: 100%;
+    flex: 1;
+}
+
+.modal-form-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+}
+
+.modal-form-column form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* Modal action buttons container */
+.modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 24px;
+    border-top: 1px solid var(--ss-line);
+}
+
+.cancel-button {
+    min-height: 43px;
+    padding: 10px 18px;
+    border: 1px solid var(--ss-line);
+    border-radius: 8px;
+    background: white;
+    color: var(--ss-ink-soft);
+    font: 700 11px 'DM Sans', sans-serif;
+    cursor: pointer;
+}
+
+/* Secondary temporary use button */
+.secondary-action-button {
+    min-height: 43px;
+    padding: 10px 18px;
+    border: 1px solid var(--ss-sage);
+    border-radius: 8px;
+    background: var(--ss-pale);
+    color: var(--ss-green);
+    font: 700 11px 'DM Sans', sans-serif;
+    cursor: pointer;
+}
+.secondary-action-button:hover {
+    background: #e4eac4;
+}
+
+.save-button {
+    width: auto;
+    min-height: 43px;
+    padding: 10px 22px;
+    border-radius: 8px;
+}
+
+/* Right-hand helper panel */
+.modal-side-panel {
+    background: var(--ss-pale);
+    border: 1px solid var(--ss-line);
+    border-radius: 14px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: fit-content;
+}
+
+.side-panel-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--ss-green);
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+}
+
+.side-panel-content h3 {
+    margin: 0 0 8px;
+    font: 700 16px 'Manrope', sans-serif;
+    color: var(--ss-ink);
+}
+
+.side-panel-content p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ss-ink-soft);
+}
+
+.side-panel-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.side-panel-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--ss-ink-soft);
+    line-height: 1.5;
+}
+
+.side-panel-item span {
+    color: var(--ss-green);
+    font-weight: 700;
+}
+
+@media (max-width: 860px) {
+    .modal-split-layout {
+        grid-template-columns: 1fr;
+    }
+    .modal-side-panel {
+        display: none;
+    }
+    .address-modal {
+        border-radius: 0;
+        padding: 20px;
+    }
+}
+
+
+
 button:focus-visible { outline: 3px solid rgb(108 138 92 / 35%); outline-offset: 3px; }
 
 @media (max-width: 980px) {

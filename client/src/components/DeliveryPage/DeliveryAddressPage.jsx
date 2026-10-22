@@ -6,7 +6,7 @@ import { initialAddresses, emptyAddress } from "./DeliveryAddressPage.js"
 import PageHeader from "./Elements/PageHeader.jsx";
 import AddressSection from "./AddressSection/AddressSection.jsx";
 import SelectedDeliveryContinue from "./AddressSection/Elements/SelectedDeliveryContinue.jsx";
-
+import AddressModal from "./AddressSection/Elements/EditAddressModal.jsx";
 
 export default function DeliveryAddressPage() {
 
@@ -101,6 +101,47 @@ export default function DeliveryAddressPage() {
         setShowForm(false);
     }
 
+    function useTemporarilyAddress(event) {
+        event.preventDefault();
+        // Run validation first
+        const next = {};
+        ["name", "phone", "line1", "city", "state", "pincode"].forEach((key) => {
+            if (!form[key].trim()) next[key] = "This field is required.";
+        });
+        if (form.phone && !/^[+]?[\d\s()-]{10,16}$/.test(form.phone.trim())) {
+            next.phone = "Enter a valid phone number.";
+        }
+        if (form.pincode && !/^\d{6}$/.test(form.pincode.trim())) {
+            next.pincode = "Enter a 6-digit PIN code.";
+        }
+        setErrors(next);
+        if (Object.keys(next).length > 0) return;
+
+        // Create a temporary address object without saving it permanently to the saved list
+        const tempAddress = {
+            id: 'temp-' + Date.now(),
+            ...form,
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            line1: form.line1.trim(),
+            line2: form.line2.trim(),
+            city: form.city.trim(),
+            state: form.state.trim(),
+            pincode: form.pincode.trim(),
+            isDefault: false,
+        };
+
+        // We can temporarily select it directly via `setSelectedId` or handle it in state.
+        // Since selectedAddress looks up by id in `addresses`, let's temporarily append it
+        // or set a dedicated `tempSelectedAddress` state. Or simpler: add it to addresses
+        // as a non-saved item, OR store it directly as the selected delivery target!
+        // To keep it clean without permanently polluting saved cards:
+        setAddresses((current) => [...current, tempAddress]);
+        setSelectedId(tempAddress.id);
+        setNotice("Using this address temporarily for this order (not saved to profile).");
+        setShowForm(false);
+    }
+
     function removeAddress(id) {
         const remaining = addresses.filter((address) => address.id !== id);
         setAddresses(remaining);
@@ -151,7 +192,15 @@ export default function DeliveryAddressPage() {
 
                 </div>
 
-                <div className="Filler"></div>
+                <AddressModal
+                    showForm={showForm}
+                    editingId={editingId}
+                    form={form}
+                    errors={errors}
+                    updateField={updateField}
+                    saveAddress={saveAddress}
+                    setShowForm={setShowForm}
+                />
 
             </main>
         </>
