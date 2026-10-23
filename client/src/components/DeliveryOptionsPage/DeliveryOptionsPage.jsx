@@ -5,7 +5,6 @@ import SelectedDestinationPreview from "./Elements/SelectedDestinationPreview.js
 import DeliveryOptions from "./Elements/DeliveryOptions";
 import OrderSummary from "./Elements/OrderSummary.jsx";
 import OrderTotal from "./Elements/OrderTotal.jsx";
-import {useNavigate} from "react-router-dom";
 import {emptyAddress as selectedAddress} from "../DeliveryAddressPage/DeliveryAddressPage.js";
 
 
