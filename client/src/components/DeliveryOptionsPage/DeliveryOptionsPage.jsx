@@ -51,8 +51,6 @@ function ProductPlaceholder({ tag, tone }) {
 
 export default function DeliveryOptionsPage() {
 
-    const navigate = useNavigate();
-
     const [speed, setSpeed] = useState("standard");
     const [notice, setNotice] = useState("");
     const subtotal = useMemo(() => products.reduce((sum, p) => sum + p.price * p.qty, 0), []);
