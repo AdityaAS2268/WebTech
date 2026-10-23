@@ -1,4 +1,9 @@
+import {useNavigate} from "react-router-dom";
+
 export default function SelectedDestinationPreview({ Icon, setNotice }) {
+
+    const navigate = useNavigate();
+
     return (
         <>
             <section className="destination-strip">
@@ -8,7 +13,10 @@ export default function SelectedDestinationPreview({ Icon, setNotice }) {
                     <strong>Home · ABCD</strong>
                     <span>24, Lake View Road, Velachery, Chennai – 600042</span>
                 </div>
-                <button className="quiet-link" type="button" onClick={() => setNotice("Address selection will connect to your saved-address page.")}>Change</button>
+                <button className="quiet-link" type="button" onClick={() => {
+                    setNotice("Address selection will connect to your saved-address page.")
+                    navigate("/checkout/address");
+                }}>Change</button>
             </section>
         </>
     )

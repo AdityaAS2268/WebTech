@@ -1,4 +1,5 @@
 import {useMemo, useState} from "react";
+import { useNavigate } from "react-router-dom";
 
 import "./DeliveryAddressPage.css";
 import { initialAddresses, emptyAddress } from "./DeliveryAddressPage.js"
@@ -9,6 +10,8 @@ import SelectedDeliveryContinue from "./AddressSection/Elements/SelectedDelivery
 import AddressModal from "./AddressSection/Elements/EditAddressModal.jsx";
 
 export default function DeliveryAddressPage() {
+
+    const navigate = useNavigate();
 
     const [addresses, setAddresses] = useState(initialAddresses);
     const [selectedId, setSelectedId] = useState(1);
@@ -162,6 +165,9 @@ export default function DeliveryAddressPage() {
             return;
         }
         setNotice(`Delivery address selected: ${selectedAddress.label}. Backend and next checkout step will be connected later.`);
+
+        navigate("/checkout/options");
+
     }
 
 

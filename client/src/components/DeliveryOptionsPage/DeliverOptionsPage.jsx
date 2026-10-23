@@ -5,6 +5,7 @@ import SelectedDestinationPreview from "./Elements/SelectedDestinationPreview.js
 import DeliveryOptions from "./Elements/DeliveryOptions";
 import OrderSummary from "./Elements/OrderSummary.jsx";
 import OrderTotal from "./Elements/OrderTotal.jsx";
+import {useNavigate} from "react-router-dom";
 
 const products = [
     { id: 1, name: "Black and Gray Athletic Cotton Socks", detail: "6 pairs · Cotton blend", price: 299, qty: 1, tag: "SOCKS", tone: "sage", standard: "Monday, 26 October", express: "Saturday, 24 October" },
@@ -34,6 +35,9 @@ function ProductPlaceholder({ tag, tone }) {
 }
 
 export default function DeliveryOptionsPage() {
+
+    const navigate = useNavigate();
+
     const [speed, setSpeed] = useState("standard");
     const [notice, setNotice] = useState("");
     const subtotal = useMemo(() => products.reduce((sum, p) => sum + p.price * p.qty, 0), []);

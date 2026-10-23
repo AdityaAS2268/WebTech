@@ -1,14 +1,34 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+
 import './index.css'
 import App from './App.jsx'
-import DeliveryAddressPage from "./components/DeliveryPage/DeliveryAddresspage.jsx";
-import DeliveryOptionsPage from "./components/DeliveryOptionsPage/DeliverOptionsPage.jsx";
+
+const DeliveryAddressPage = lazy(() => import('./components/DeliveryAddressPage/DeliveryAddresspage.jsx'));
+const DeliveryOptionsPage = lazy(() => import('./components/DeliveryOptionsPage/DeliverOptionsPage.jsx'));
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+      <BrowserRouter>
+          <Suspense fallback={
+              <div style={{ padding: '2rem', textAlign: 'center' }}>
+                  Loading...
+              </div>
+          }>
+
+              <Routes>
+                  <Route path="/" element={<App />} />
+
+                  <Route path="/checkout/address" element={<DeliveryAddressPage />} />
+
+                  <Route path="/checkout/options" element={<DeliveryOptionsPage />} />
+              </Routes>
+
+          </Suspense>
+      </BrowserRouter>
     {/*<App />*/}
     {/*  <DeliveryAddressPage />*/}
-      <DeliveryOptionsPage />
+    {/*  <DeliveryOptionsPage />*/}
   </StrictMode>,
 )
