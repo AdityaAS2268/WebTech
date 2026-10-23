@@ -4,6 +4,7 @@ import Header from "./Elements/Header.jsx";
 import SelectedDestinationPreview from "./Elements/SelectedDestinationPreview.jsx";
 import DeliveryOptions from "./Elements/DeliveryOptions";
 import OrderSummary from "./Elements/OrderSummary.jsx";
+import OrderTotal from "./Elements/OrderTotal.jsx";
 
 const products = [
     { id: 1, name: "Black and Gray Athletic Cotton Socks", detail: "6 pairs · Cotton blend", price: 299, qty: 1, tag: "SOCKS", tone: "sage", standard: "Monday, 26 October", express: "Saturday, 24 October" },
@@ -59,6 +60,10 @@ export default function DeliveryOptionsPage() {
                     <OrderSummary Icon={Icon} products={products} ProductPlaceholder={ProductPlaceholder} speed={speed}/>
 
                 </div>
+
+                <aside className="order-summary">
+                    <OrderTotal Icon={Icon} notice={notice} products={products} subtotal={subtotal} selected={selected} total={total} continueToPayment={continueToPayment} />
+                </aside>
 
             </div>
 
