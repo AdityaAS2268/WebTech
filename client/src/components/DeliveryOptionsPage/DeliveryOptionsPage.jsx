@@ -6,6 +6,21 @@ import DeliveryOptions from "./Elements/DeliveryOptions";
 import OrderSummary from "./Elements/OrderSummary.jsx";
 import OrderTotal from "./Elements/OrderTotal.jsx";
 import {useNavigate} from "react-router-dom";
+import {emptyAddress as selectedAddress} from "../DeliveryAddressPage/DeliveryAddressPage.js";
+
+
+const selectedAddressFallback = {
+        id: 1,
+        label: "Home",
+        name: "ABCD",
+        phone: "+91 98765 43210",
+        line1: "24, Lake View Road",
+        line2: "Velachery",
+        city: "Chennai",
+        state: "Tamil Nadu",
+        pincode: "600042",
+        isDefault: true,
+}
 
 const products = [
     { id: 1, name: "Black and Gray Athletic Cotton Socks", detail: "6 pairs · Cotton blend", price: 299, qty: 1, tag: "SOCKS", tone: "sage", standard: "Monday, 26 October", express: "Saturday, 24 October" },
@@ -44,6 +59,18 @@ export default function DeliveryOptionsPage() {
     const selected = options.find((option) => option.id === speed);
     const total = subtotal + selected.fee;
 
+    const [selectedAddress] = useState(() => {
+        const savedAddress = sessionStorage.getItem("selectedAddress");
+        if (savedAddress) {
+            try {
+                return JSON.parse(savedAddress);
+            } catch (error) {
+                console.error("Failed to parse saved address", error);
+            }
+        }
+        return selectedAddressFallback;
+    })
+
     function continueToPayment() {
         setNotice(`Ready for payment: ${selected.title.toLowerCase()} selected · Total ₹${total.toLocaleString("en-IN")}.`);
     }
@@ -57,7 +84,7 @@ export default function DeliveryOptionsPage() {
             <div className="delivery-options-layout">
                 <div className="delivery-main">
 
-                    <SelectedDestinationPreview Icon={Icon} setNotice={setNotice} />
+                    <SelectedDestinationPreview Icon={Icon} setNotice={setNotice} selectedAddress={selectedAddress} />
 
                     <DeliveryOptions Icon={Icon} options={options} speed={speed} setSpeed={setSpeed} setNotice={setNotice} />
 

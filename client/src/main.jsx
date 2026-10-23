@@ -6,7 +6,7 @@ import './index.css'
 import App from './App.jsx'
 
 const DeliveryAddressPage = lazy(() => import('./components/DeliveryAddressPage/DeliveryAddresspage.jsx'));
-const DeliveryOptionsPage = lazy(() => import('./components/DeliveryOptionsPage/DeliverOptionsPage.jsx'));
+const DeliveryOptionsPage = lazy(() => import('./components/DeliveryOptionsPage/DeliveryOptionsPage.jsx'));
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

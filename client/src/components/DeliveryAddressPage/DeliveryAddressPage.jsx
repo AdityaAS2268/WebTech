@@ -164,6 +164,9 @@ export default function DeliveryAddressPage() {
             setNotice("Add or select an address to continue.");
             return;
         }
+
+        sessionStorage.setItem("selectedAddress", JSON.stringify(selectedAddress));
+
         setNotice(`Delivery address selected: ${selectedAddress.label}. Backend and next checkout step will be connected later.`);
 
         navigate("/checkout/options");
