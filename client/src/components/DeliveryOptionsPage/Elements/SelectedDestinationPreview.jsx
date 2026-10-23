@@ -1,4 +1,4 @@
-export default function SelectedDestinationPreview({ Icon }) {
+export default function SelectedDestinationPreview({ Icon, setNotice }) {
     return (
         <>
             <section className="destination-strip">
