@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import "./DeliveryOptionsPage.css";
 import Header from "./Elements/Header.jsx";
 import SelectedDestinationPreview from "./Elements/SelectedDestinationPreview.jsx";
+import DeliveryOptions from "./Elements/DeliveryOptions";
 
 const products = [
     { id: 1, name: "Black and Gray Athletic Cotton Socks", detail: "6 pairs · Cotton blend", price: 299, qty: 1, tag: "SOCKS", tone: "sage", standard: "Monday, 26 October", express: "Saturday, 24 October" },
@@ -46,10 +47,13 @@ export default function DeliveryOptionsPage() {
 
             <Header Icon={Icon}/>
 
+
             <div className="delivery-options-layout">
                 <div className="delivery-main">
 
-                    <SelectedDestinationPreview Icon={Icon} />
+                    <SelectedDestinationPreview Icon={Icon} setNotice={setNotice} />
+
+                    <DeliveryOptions Icon={Icon} options={options} speed={speed} setSpeed={setSpeed} setNotice={setNotice} />
 
                 </div>
 
