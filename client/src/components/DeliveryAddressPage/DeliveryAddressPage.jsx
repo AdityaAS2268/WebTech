@@ -1,4 +1,4 @@
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import { useNavigate } from "react-router-dom";
 
 import "./DeliveryAddressPage.css";
@@ -25,6 +25,54 @@ export default function DeliveryAddressPage() {
         () => addresses.find((address) => address.id === selectedId),
         [addresses, selectedId]
     );
+
+    async function RetrieveUserAddresses(userID) {
+        try {
+            const response = await fetch("/api/userAddressesForUserID", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ userID: userID })
+            })
+
+            const data = await response.json();
+            console.log(data.result);
+
+            var retrievedAddresss = [];
+
+            data.result.map((address) => {
+                const currentAddress = {
+                    id: address.id,
+                    label: address.AddressLabel,
+                    name: address.Name,
+                    phone: address.PhoneNo,
+                    line1: address.AddressLine1,
+                    line2: address.AddressLine2,
+                    city: address.City,
+                    state: address.State,
+                    pincode: address.PinCode,
+                    isDefault: address.IsDefault === "Y",
+                    userID: address.userID
+                }
+
+                if (address.IsDefault === "Y") {
+                    setSelectedId(address.id)
+                }
+
+                retrievedAddresss.push(currentAddress);
+            })
+
+            setAddresses(retrievedAddresss);
+
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    useEffect(() => {
+        RetrieveUserAddresses("USR1001");
+    }, [])
 
     function startAddAddress() {
         setEditingId(null);
@@ -72,9 +120,34 @@ export default function DeliveryAddressPage() {
         return Object.keys(next).length === 0;
     }
 
-    function saveAddress(event) {
+
+    async function UpdateAddressToDatabase(address) {
+        const response = await fetch("/api/UpdateAddress", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(address)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Address update failed");
+        }
+
+        return data;
+    }
+
+
+    async function saveAddress(event) {
         event.preventDefault();
+
         if (!validate()) return;
+
+        const existingAddress = addresses.find(
+            address => address.id === editingId
+        );
 
         const cleaned = {
             ...form,
@@ -85,24 +158,80 @@ export default function DeliveryAddressPage() {
             city: form.city.trim(),
             state: form.state.trim(),
             pincode: form.pincode.trim(),
-            isDefault: !editingId && addresses.length === 0,
+            isDefault: editingId
+                ? existingAddress?.isDefault ?? false
+                : addresses.length === 0,
+            userID: addresses[0].userID
         };
 
-        if (editingId) {
-            setAddresses((current) =>
-                current.map((address) =>
-                    address.id === editingId ? { ...address, ...cleaned } : address
-                )
-            );
-            setNotice("Address updated.");
-        } else {
-            const newAddress = { ...cleaned, id: Date.now() };
-            setAddresses((current) => [...current, newAddress]);
-            setSelectedId(newAddress.id);
-            setNotice("Address added and selected.");
+        try {
+            if (editingId) {
+
+                // Include the database ID and user ID!
+                const addressToUpdate = {
+                    ...cleaned,
+                    id: editingId,
+                    userID: "USR1001"
+                };
+
+                // Wait until MySQL confirms the update
+                await UpdateAddressToDatabase(addressToUpdate);
+
+                // Update React state only after success
+                setAddresses(current =>
+                    current.map(address =>
+                        address.id === editingId
+                            ? { ...address, ...cleaned }
+                            : address
+                    )
+                );
+
+                setNotice("Address updated successfully!");
+
+
+            } else {
+
+                const addressToAdd = {
+                    ...cleaned,
+                    userID: "USR1001"
+                };
+
+                const response = await fetch("/api/AddAddress", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(addressToAdd)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Address insertion failed");
+                }
+
+                // Use the actual ID generated by MySQL
+                const newAddress = {
+                    ...cleaned,
+                    id: data.insertedId,
+                    userID: "USR1001"
+                };
+
+                setAddresses(current => [...current, newAddress]);
+                setSelectedId(newAddress.id);
+
+                setNotice("Address added successfully!");
+            }
+
+
+            setShowForm(false);
+
+        } catch (error) {
+            console.error("Address update failed:", error);
+            setNotice("Could not update address. Please try again.");
         }
-        setShowForm(false);
     }
+
 
     function useTemporarilyAddress(event) {
         event.preventDefault();
@@ -145,18 +274,41 @@ export default function DeliveryAddressPage() {
         setShowForm(false);
     }
 
-    function removeAddress(id) {
+    async function removeAddress(id) {
         const remaining = addresses.filter((address) => address.id !== id);
         setAddresses(remaining);
         if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
         setNotice("Address removed.");
+
+        // Removing the address from Database
+        const response = await fetch("/api/RemoveAddress", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({addressID: id, userID: addresses[0].userID})
+        });
+
     }
 
-    function setDefaultAddress(id) {
+    async function setDefaultAddress(id) {
         setAddresses((current) =>
             current.map((address) => ({ ...address, isDefault: address.id === id }))
         );
         setNotice("Default address updated.");
+
+        // Updating to database
+        const response = await fetch("/api/UpdateDefaultAddress", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                defaultAddressID: id,
+                userID: addresses[0].userID
+            })
+        });
+
     }
 
     function continueToDelivery() {
@@ -209,6 +361,7 @@ export default function DeliveryAddressPage() {
                     updateField={updateField}
                     saveAddress={saveAddress}
                     setShowForm={setShowForm}
+                    useTemporarilyAddress={useTemporarilyAddress}
                 />
 
             </main>
