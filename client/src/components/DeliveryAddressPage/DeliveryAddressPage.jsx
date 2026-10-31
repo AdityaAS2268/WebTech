@@ -226,6 +226,8 @@ export default function DeliveryAddressPage() {
 
             setShowForm(false);
 
+            window.location.reload();
+
         } catch (error) {
             console.error("Address update failed:", error);
             setNotice("Could not update address. Please try again.");
