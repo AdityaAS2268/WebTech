@@ -21,7 +21,9 @@ const selectedAddressFallback = {
         isDefault: true,
 }
 
-const products = [
+
+
+const fallbackProducts = [
     { id: 1, name: "Black and Gray Athletic Cotton Socks", detail: "6 pairs · Cotton blend", price: 299, qty: 1, tag: "SOCKS", tone: "sage", standard: "Monday, 26 October", express: "Saturday, 24 October" },
     { id: 2, name: "Intermediate Size Basketball", detail: "Size 6 · Indoor / outdoor", price: 899, qty: 1, tag: "BALL", tone: "clay", standard: "Wednesday, 28 October", express: "Monday, 26 October" },
     { id: 3, name: "Adults Plain Cotton T-Shirt", detail: "Teal · 2 pack · Size M", price: 649, qty: 1, tag: "TEE", tone: "blue", standard: "Tuesday, 27 October", express: "Sunday, 25 October" },
@@ -44,11 +46,47 @@ function Icon({ name }) {
     return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function ProductPlaceholder({ tag, tone }) {
+function ProductPlaceholderOld({ tag, tone }) {
     return <div className={`product-placeholder product-placeholder--${tone}`} aria-label={`${tag} image placeholder`}><span>{tag}</span><i /></div>;
+}
+function ProductPlaceholder({ tag, tone, image, name }) {
+
+    if (image) {
+        return (
+            <img
+                className="checkout-product-image"
+                src={image}
+                alt={name}
+            />
+        );
+    }
+
+    return (
+        <div
+            className={`product-placeholder product-placeholder--${tone}`}
+            aria-label={`${tag} image placeholder`}
+        >
+            <span>{tag}</span>
+            <i />
+        </div>
+    );
 }
 
 export default function DeliveryOptionsPage() {
+
+    const [products] = useState(() => {
+        const savedItems = sessionStorage.getItem("checkoutItems");
+
+        if (savedItems) {
+            try {
+                return JSON.parse(savedItems);
+            } catch (error) {
+                console.error("Failed to parse checkout items", error);
+            }
+        }
+
+        return fallbackProducts;
+    });
 
     const [speed, setSpeed] = useState("standard");
     const [notice, setNotice] = useState("");

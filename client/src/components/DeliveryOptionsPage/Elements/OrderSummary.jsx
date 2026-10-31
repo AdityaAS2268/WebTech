@@ -27,18 +27,52 @@ export default function OrderSummary({ Icon, products, ProductPlaceholder, speed
 
 function ProductList({ products, ProductPlaceholder, speed }) {
     return (
-        <>
-            <div className="product-list">
-                {products.map((product, index) => <article className="checkout-product" key={product.id}>
-                    <ProductPlaceholder tag={product.tag} tone={product.tone}/>
+        <div className="product-list">
+            {products.map((product, index) => (
+                <article className="checkout-product" key={product.id}>
+
+                    <ProductPlaceholder
+                        tag={product.tag}
+                        tone={product.tone}
+                        image={product.image}
+                        name={product.name}
+                    />
+
                     <div className="checkout-product__details">
-                        <p className="product-category">ITEM {String(index + 1).padStart(2, "0")}</p>
-                        <h3>{product.name}</h3><p className="product-variant">{product.detail}</p>
-                        <div className="product-delivery-date"><span className="date-dot"/><span>Arrives <strong>{speed === "standard" ? product.standard : product.express}</strong></span></div>
+
+                        <p className="product-category">
+                            ITEM {String(index + 1).padStart(2, "0")}
+                        </p>
+
+                        <h3>{product.name}</h3>
+
+                        <p className="product-variant">
+                            {product.detail || product.category || ""}
+                        </p>
+
+                        <div className="product-delivery-date">
+                            <span className="date-dot" />
+                            <span>
+                                Arrives{" "}
+                                <strong>
+                                    {speed === "standard"
+                                        ? product.standard || "Standard delivery"
+                                        : product.express || "Express delivery"}
+                                </strong>
+                            </span>
+                        </div>
+
                     </div>
-                    <div className="checkout-product__price"><strong>₹{product.price.toLocaleString("en-IN")}</strong><span>Qty {product.qty}</span></div>
-                </article>)}
-            </div>
-        </>
-    )
+
+                    <div className="checkout-product__price">
+                        <strong>
+                            ₹{product.price.toLocaleString("en-IN")}
+                        </strong>
+                        <span>Qty {product.qty}</span>
+                    </div>
+
+                </article>
+            ))}
+        </div>
+    );
 }
