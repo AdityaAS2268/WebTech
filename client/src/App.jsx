@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { products } from "./data/products";
 import "./App.css";
 
@@ -10,6 +11,7 @@ const formatPrice = (price) =>
   }).format(price);
 
 function App() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
@@ -400,11 +402,7 @@ function App() {
                 </p>
                 <button
                   className="checkout-button"
-                  onClick={() =>
-                    alert(
-                      "Checkout integration will be added with the Payment module.",
-                    )
-                  }
+                  onClick={() => navigate("/checkout/payment")}
                 >
                   Proceed to checkout
                 </button>
