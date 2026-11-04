@@ -13,6 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 // Check whether the backend is running
+// In-memory payment transactions store (simulating local database table)
+const paymentsStore = [];
+
 app.get("/api/health", (req, res) => {
   res.json({
     message: "Backend is running!"
@@ -35,6 +38,55 @@ app.get("/api/dbTest", async (req, res) => {
       message: "Database connection failed"
     });
   }
+});
+
+// Process a payment transaction
+app.post("/api/payments/process", (req, res) => {
+  const { method, amountCents, cardDetails, upiDetails, netbankingDetails } = req.body;
+
+  if (!method || !amountCents) {
+    return res.status(400).json({ error: "Method and amount are required." });
+  }
+
+  const orderId = "SS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+  const paymentRef = "PAY-" + Date.now().toString(36).toUpperCase();
+
+  const record = {
+    paymentReference: paymentRef,
+    orderId,
+    method,
+    amountCents,
+    currency: "INR",
+    status: "completed",
+    timestamp: new Date().toISOString(),
+    details: {
+      cardLastFour: cardDetails?.cardNumber ? cardDetails.cardNumber.replace(/\s/g, "").slice(-4) : null,
+      upiId: upiDetails?.upiId || null,
+      bank: netbankingDetails?.bank || null,
+    },
+  };
+
+  paymentsStore.push(record);
+
+  return res.status(200).json({
+    success: true,
+    message: "Payment processed successfully",
+    orderId,
+    paymentReference: paymentRef,
+    amount: amountCents,
+    status: "completed",
+  });
+});
+
+// Get payment receipt / details by reference or orderId
+app.get("/api/payments/:orderId", (req, res) => {
+  const payment = paymentsStore.find(
+    (p) => p.orderId === req.params.orderId || p.paymentReference === req.params.orderId
+  );
+  if (!payment) {
+    return res.status(404).json({ error: "Payment record not found." });
+  }
+  res.json(payment);
 });
 
 app.listen(PORT, () => {
@@ -181,14 +233,3 @@ app.post("/api/RemoveAddress", async (req, res) => {
     res.status(500).json({result: "Database error"});
   }
 })
-
-// id: 1,
-//     label: "Home",
-//     name: "ABCDEFGH",
-//     phone: "+91 98765 43210",
-//     line1: "24, Lake View Road",
-//     line2: "Velachery",
-//     city: "Chennai",
-//     state: "Tamil Nadu",
-//     pincode: "600042",
-//     isDefault: true,
