@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { products } from "./data/products";
 import "./App.css";
 
@@ -60,7 +61,7 @@ function App() {
   const cartItems = products.filter((product) => cart[product.id] > 0);
 
   const cartTotal = cartItems.reduce(
-    (total, product) => total + product.price * cart[product.id],
+    (total, product) => total + (product.priceCents / 100) * cart[product.id],
     0,
   );
 
@@ -360,7 +361,7 @@ function App() {
                       <img src={product.image} alt="" />
                       <div className="cart-item-info">
                         <h3>{product.name}</h3>
-                        <p>{formatPrice(product.price)}</p>
+                        <p>{formatPrice(product.priceCents / 100)}</p>
                         <div className="quantity-controls">
                           <button
                             onClick={() => updateQuantity(product, -1)}

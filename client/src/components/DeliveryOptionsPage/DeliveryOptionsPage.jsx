@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./DeliveryOptionsPage.css";
 import Header from "./Elements/Header.jsx";
 import SelectedDestinationPreview from "./Elements/SelectedDestinationPreview.jsx";
@@ -74,6 +75,8 @@ function ProductPlaceholder({ tag, tone, image, name }) {
 
 export default function DeliveryOptionsPage() {
 
+    const navigate = useNavigate();
+
     const [products] = useState(() => {
         const savedItems = sessionStorage.getItem("checkoutItems");
 
@@ -107,7 +110,22 @@ export default function DeliveryOptionsPage() {
     })
 
     function continueToPayment() {
-        setNotice(`Ready for payment: ${selected.title.toLowerCase()} selected · Total ₹${total.toLocaleString("en-IN")}.`);
+        // Prepare the order summary data object
+        const orderSummaryData = {
+            subtotal: subtotal,
+            shippingFee: selected.fee,
+            shippingMethod: selected.title,
+            total: total,
+        };
+
+        // Save to sessionStorage
+        sessionStorage.setItem("orderSummary", JSON.stringify(orderSummaryData));
+
+        // Optional debug log
+        console.log("ORDER SUMMARY SAVED:", orderSummaryData);
+
+        // Proceed to the payment page
+        navigate("/checkout/payment");
     }
 
     return (
