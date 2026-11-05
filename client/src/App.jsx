@@ -182,9 +182,7 @@ function App() {
 
       <main className="main-content">
         {showProfile ? (
-          <div style={{ padding: "1rem" }}>
-            <Profile />
-          </div>
+          <Profile onBackToShop={() => setShowProfile(false)} />
         ) : (
           <>
             <section className="welcome">

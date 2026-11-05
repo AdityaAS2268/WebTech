@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import db from "./db.js";
+import profileRoutes from "./routes/profileRoutes.js";
 
 dotenv.config();
 
@@ -90,8 +91,8 @@ app.get("/api/payments/:orderId", (req, res) => {
 });
 
 // User Profile routes
-const profileRoutes = require("./routes/profileRoutes");
 app.use("/api/profile", profileRoutes);
+app.use("/api/users", profileRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
