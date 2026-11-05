@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { products } from "./data/products";
 import "./App.css";
 
+// Format prices in Indian Rupees
 const formatPrice = (price) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -12,9 +13,14 @@ const formatPrice = (price) =>
     }).format(price);
 
 function App() {
-
   const navigate = useNavigate();
 
+  // Products fetched from MySQL through Express
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Shopping states
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
@@ -23,50 +29,143 @@ function App() {
   const [showCart, setShowCart] = useState(false);
   const [showWishlist, setShowWishlist] = useState(false);
 
+  // Fetch products from MySQL
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await fetch(
+            "http://localhost:3000/api/products"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch products");
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !Array.isArray(data.products)) {
+          throw new Error("Invalid product data received");
+        }
+
+        // Ensure all product properties match the React UI
+        const formattedProducts = data.products.map((product) => ({
+          ...product,
+
+          id: product.id,
+          name: product.name || "Unnamed Product",
+
+          // Resolve relative image paths from the frontend
+          image: product.image
+              ? product.image.startsWith("/")
+                  ? product.image
+                  : `/${product.image}`
+              : "",
+
+          priceCents: Number(product.priceCents ?? product.price_cents ?? 0),
+
+          stock: Number(product.stock ?? 10),
+
+          category: product.category || product.type || "General",
+
+          rating: {
+            stars: Number(
+                product.rating?.stars ??
+                product.rating_stars ??
+                0
+            ),
+            count: Number(
+                product.rating?.count ??
+                product.rating_count ??
+                0
+            ),
+          },
+
+          keywords: Array.isArray(product.keywords)
+              ? product.keywords
+              : [],
+        }));
+
+        console.log("Products fetched from MySQL:", formattedProducts);
+
+        setProducts(formattedProducts);
+
+      } catch (err) {
+        console.error("Product fetching error:", err);
+        setError(err.message || "Unable to load products.");
+
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, []);
+
+  // Generate categories dynamically
   const categories = [
     "All",
     ...new Set(products.map((product) => product.category)),
   ];
 
+  // Search, filter and sort products
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
-      const matchesSearch = product.name
-        .toLowerCase()
-        .includes(search.toLowerCase());
+      const searchTerm = search.toLowerCase();
+
+      const matchesSearch =
+          product.name.toLowerCase().includes(searchTerm) ||
+          product.keywords.some((keyword) =>
+              String(keyword).toLowerCase().includes(searchTerm)
+          );
 
       const matchesCategory =
-        category === "All" || product.category === category;
+          category === "All" || product.category === category;
 
-      const matchesWishlist = !showWishlist || wishlist.includes(product.id);
+      const matchesWishlist =
+          !showWishlist || wishlist.includes(product.id);
 
-      return matchesSearch && matchesCategory && matchesWishlist;
+      return (
+          matchesSearch &&
+          matchesCategory &&
+          matchesWishlist
+      );
     });
 
     if (sortBy === "price-low") {
-      result.sort((a, b) => a.price - b.price);
+      result.sort((a, b) => a.priceCents - b.priceCents);
+
     } else if (sortBy === "price-high") {
-      result.sort((a, b) => b.price - a.price);
+      result.sort((a, b) => b.priceCents - a.priceCents);
+
     } else if (sortBy === "rating") {
-      result.sort((a, b) => b.rating - a.rating);
+      result.sort(
+          (a, b) => b.rating.stars - a.rating.stars
+      );
     }
 
     return result;
-  }, [search, category, sortBy, showWishlist, wishlist]);
+  }, [products, search, category, sortBy, showWishlist, wishlist]);
 
+  // Cart calculations
   const cartCount = Object.values(cart).reduce(
-    (total, quantity) => total + quantity,
-    0,
+      (total, quantity) => total + quantity,
+      0
   );
 
-  const cartItems = products.filter((product) => cart[product.id] > 0);
+  const cartItems = products.filter(
+      (product) => cart[product.id] > 0
+  );
 
   const cartTotal = cartItems.reduce(
-    (total, product) => total + (product.priceCents / 100) * cart[product.id],
-    0,
+      (total, product) =>
+          total +
+          (product.priceCents / 100) * cart[product.id],
+      0
   );
 
+  // Add product to cart
   function addToCart(product) {
-    if (product.stock === 0) return;
+    if (product.stock <= 0) return;
 
     setCart((current) => {
       const quantity = current[product.id] || 0;
@@ -82,9 +181,11 @@ function App() {
     });
   }
 
+  // Increase or decrease product quantity
   function updateQuantity(product, change) {
     setCart((current) => {
-      const nextQuantity = (current[product.id] || 0) + change;
+      const nextQuantity =
+          (current[product.id] || 0) + change;
 
       if (nextQuantity <= 0) {
         const updated = { ...current };
@@ -103,338 +204,472 @@ function App() {
     });
   }
 
+  // Add or remove product from wishlist
   function toggleWishlist(productId) {
     setWishlist((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId],
+        current.includes(productId)
+            ? current.filter((id) => id !== productId)
+            : [...current, productId]
     );
   }
 
+  // Open wishlist
   function openWishlist() {
     setShowWishlist((current) => !current);
     setShowCart(false);
   }
 
+  // Open cart
   function openCart() {
     setShowCart((current) => !current);
     setShowWishlist(false);
   }
 
+  // Loading screen
+  if (loading) {
+    return <h2>Loading products...</h2>;
+  }
+
+  // Error screen
+  if (error) {
+    return <h2>{error}</h2>;
+  }
+
+  // Main application
   return (
-    <div className="shop">
-      <header className="navbar">
-        <a className="brand" href="#" aria-label="Shop home">
-          Shop<span>Sphere</span>
-        </a>
+      <div className="shop">
 
-        <label className="search-box">
-          <span aria-hidden="true">⌕</span>
-          <input
-            type="search"
-            placeholder="Search products..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
+        {/* Navigation Bar */}
+        <header className="navbar">
 
-        <nav className="nav-actions" aria-label="Shopping actions">
-          <button
-            className={showWishlist ? "nav-button active" : "nav-button"}
-            onClick={openWishlist}
-            aria-pressed={showWishlist}
-          >
-            ♡ Wishlist ({wishlist.length})
-          </button>
+          <a className="brand" href="#" aria-label="Shop home">
+            Shop<span>Sphere</span>
+          </a>
 
-          <button className="cart-button" onClick={openCart}>
-            🛒 Cart ({cartCount})
-          </button>
-        </nav>
-      </header>
+          <label className="search-box">
+            <span aria-hidden="true">⌕</span>
 
-      <main className="main-content">
-        <section className="welcome">
-          <div>
-            <p className="eyebrow">YOUR EVERYDAY MARKETPLACE</p>
-            <h1>
-              Find your next <span>favourite.</span>
-            </h1>
-            <p className="welcome-description">
-              Discover products picked for your everyday needs.
-            </p>
-          </div>
+            <input
+                type="search"
+                placeholder="Search products..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
 
-          <div className="welcome-badge">
-            <span>✦</span>
-            <p>
-              Good finds.
-              <br />
-              Better choices.
-            </p>
-          </div>
-        </section>
+          <nav className="nav-actions" aria-label="Shopping actions">
 
-        <section className="catalogue">
-          <div className="catalogue-heading">
+            <button
+                className={showWishlist ? "nav-button active" : "nav-button"}
+                onClick={openWishlist}
+                aria-pressed={showWishlist}
+            >
+              ♡ Wishlist ({wishlist.length})
+            </button>
+
+            <button className="cart-button" onClick={openCart}>
+              🛒 Cart ({cartCount})
+            </button>
+
+          </nav>
+        </header>
+
+        {/* Main Content */}
+        <main className="main-content">
+
+          {/* Welcome Section */}
+          <section className="welcome">
+
             <div>
               <p className="eyebrow">
-                {showWishlist ? "YOUR SAVED ITEMS" : "THE COLLECTION"}
+                YOUR EVERYDAY MARKETPLACE
               </p>
-              <h2>{showWishlist ? "Your wishlist" : "Explore products"}</h2>
+
+              <h1>
+                Find your next <span>favourite.</span>
+              </h1>
+
+              <p className="welcome-description">
+                Discover products picked for your everyday needs.
+              </p>
             </div>
 
-            <label className="sort-control">
-              <span>Sort by</span>
-              <select
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
-              >
-                <option value="featured">Featured</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="rating">Top Rated</option>
-              </select>
-            </label>
-          </div>
+            <div className="welcome-badge">
+              <span>✦</span>
+              <p>
+                Good finds.
+                <br />
+                Better choices.
+              </p>
+            </div>
 
-          <div className="category-list" aria-label="Product categories">
-            {categories.map((item) => (
-              <button
-                key={item}
-                className={
-                  category === item ? "category-chip selected" : "category-chip"
-                }
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+          </section>
 
-          <p className="result-count">
-            {filteredProducts.length} product
-            {filteredProducts.length !== 1 ? "s" : ""} found
-          </p>
+          {/* Product Catalogue */}
+          <section className="catalogue">
 
-          {filteredProducts.length > 0 ? (
-            <div className="product-grid">
-              {filteredProducts.map((product) => {
-                const isWishlisted = wishlist.includes(product.id);
-                const quantity = cart[product.id] || 0;
+            <div className="catalogue-heading">
 
-                return (
-                  <article className="product-card" key={product.id}>
-                    <div className="product-image">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        loading="lazy"
-                      />
+              <div>
+                <p className="eyebrow">
+                  {showWishlist
+                      ? "YOUR SAVED ITEMS"
+                      : "THE COLLECTION"}
+                </p>
 
-                      <button
-                        className={
-                          isWishlisted
-                            ? "wishlist-button wishlisted"
-                            : "wishlist-button"
-                        }
-                        onClick={() => toggleWishlist(product.id)}
-                        aria-label={
-                          isWishlisted
-                            ? `Remove ${product.name} from wishlist`
-                            : `Add ${product.name} to wishlist`
-                        }
-                        aria-pressed={isWishlisted}
-                      >
-                        {isWishlisted ? "♥" : "♡"}
-                      </button>
+                <h2>
+                  {showWishlist
+                      ? "Your wishlist"
+                      : "Explore products"}
+                </h2>
+              </div>
 
-                      {product.stock === 0 && (
-                        <span className="stock-badge">Sold out</span>
-                      )}
-                    </div>
+              <label className="sort-control">
 
-                    <div className="product-info">
-                      <p className="product-category">{product.category}</p>
-                      <h3>{product.name}</h3>
+                <span>Sort by</span>
 
-                      <div className="product-rating">
-                        <img
-                          className="rating-stars"
-                          src={`/images/ratings/rating-${Math.round(
-                            product.rating.stars * 10,
-                          )}.png`}
-                          alt={`${product.rating.stars} out of 5 stars`}
-                        />
+                <select
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value)}
+                >
+                  <option value="featured">Featured</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="rating">Top Rated</option>
+                </select>
 
-                        <span className="rating-count">
+              </label>
+
+            </div>
+
+            {/* Category Filters */}
+            <div className="category-list" aria-label="Product categories">
+
+              {categories.map((item) => (
+                  <button
+                      key={item}
+                      className={
+                        category === item
+                            ? "category-chip selected"
+                            : "category-chip"
+                      }
+                      onClick={() => setCategory(item)}
+                  >
+                    {item}
+                  </button>
+              ))}
+
+            </div>
+
+            <p className="result-count">
+              {filteredProducts.length} product
+              {filteredProducts.length !== 1 ? "s" : ""} found
+            </p>
+
+            {/* Product Cards */}
+            {filteredProducts.length > 0 ? (
+
+                <div className="product-grid">
+
+                  {filteredProducts.map((product) => {
+
+                    const isWishlisted =
+                        wishlist.includes(product.id);
+
+                    const quantity =
+                        cart[product.id] || 0;
+
+                    return (
+
+                        <article
+                            className="product-card"
+                            key={product.id}
+                        >
+
+                          <div className="product-image">
+
+                            <img
+                                src={product.image}
+                                alt={product.name}
+                                loading="lazy"
+                            />
+
+                            <button
+                                className={
+                                  isWishlisted
+                                      ? "wishlist-button wishlisted"
+                                      : "wishlist-button"
+                                }
+                                onClick={() => toggleWishlist(product.id)}
+                                aria-label={
+                                  isWishlisted
+                                      ? `Remove ${product.name} from wishlist`
+                                      : `Add ${product.name} to wishlist`
+                                }
+                                aria-pressed={isWishlisted}
+                            >
+                              {isWishlisted ? "♥" : "♡"}
+                            </button>
+
+                            {product.stock === 0 && (
+                                <span className="stock-badge">
+                          Sold out
+                        </span>
+                            )}
+
+                          </div>
+
+                          <div className="product-info">
+
+                            <p className="product-category">
+                              {product.category}
+                            </p>
+
+                            <h3>{product.name}</h3>
+
+                            <div className="product-rating">
+
+                              <img
+                                  className="rating-stars"
+                                  src={`/images/ratings/rating-${Math.round(
+                                      product.rating.stars * 10
+                                  )}.png`}
+                                  alt={`${product.rating.stars} out of 5 stars`}
+                              />
+
+                              <span className="rating-count">
                           {product.rating.count}
                         </span>
-                      </div>
 
-                      <div className="product-footer">
-                        <div>
-                          <p className="product-price">
-                            {formatPrice(product.priceCents / 100)}
-                          </p>
-                          <p
-                            className={
-                              product.stock > 0
-                                ? "stock-text"
-                                : "stock-text unavailable"
-                            }
-                          >
-                            {product.stock > 0
-                              ? `${product.stock} in stock`
-                              : "Currently unavailable"}
-                          </p>
-                        </div>
+                            </div>
 
-                        <button
-                          className="add-button"
-                          onClick={() => addToCart(product)}
-                          disabled={
-                            product.stock === 0 || quantity >= product.stock
-                          }
-                        >
-                          {quantity > 0
-                            ? `Add more (${quantity})`
-                            : "Add to cart"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <span>⌕</span>
-              <h3>No products found</h3>
-              <p>Try another search or change your filters.</p>
-              <button
-                className="reset-button"
-                onClick={() => {
-                  setSearch("");
-                  setCategory("All");
-                  setShowWishlist(false);
-                }}
-              >
-                Show all products
-              </button>
-            </div>
-          )}
-        </section>
-      </main>
+                            <div className="product-footer">
 
-      {showCart && (
-        <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside
-            className="cart-panel"
-            onClick={(event) => event.stopPropagation()}
-            aria-label="Shopping cart"
-          >
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">YOUR SELECTION</p>
-                <h2>Shopping cart</h2>
-              </div>
-              <button
-                className="close-button"
-                onClick={() => setShowCart(false)}
-                aria-label="Close cart"
-              >
-                ×
-              </button>
-            </div>
+                              <div>
 
-            {cartItems.length === 0 ? (
-              <div className="empty-state">
-                <h3>Your cart is empty</h3>
-                <p>Add a product to get started.</p>
-              </div>
+                                <p className="product-price">
+                                  {formatPrice(product.priceCents / 100)}
+                                </p>
+
+                                <p
+                                    className={
+                                      product.stock > 0
+                                          ? "stock-text"
+                                          : "stock-text unavailable"
+                                    }
+                                >
+                                  {product.stock > 0
+                                      ? `${product.stock} in stock`
+                                      : "Currently unavailable"}
+                                </p>
+
+                              </div>
+
+                              <button
+                                  className="add-button"
+                                  onClick={() => addToCart(product)}
+                                  disabled={
+                                      product.stock === 0 ||
+                                      quantity >= product.stock
+                                  }
+                              >
+                                {quantity > 0
+                                    ? `Add more (${quantity})`
+                                    : "Add to cart"}
+                              </button>
+
+                            </div>
+
+                          </div>
+
+                        </article>
+                    );
+
+                  })}
+
+                </div>
+
             ) : (
-              <>
-                <div className="cart-items">
-                  {cartItems.map((product) => (
-                    <div className="cart-item" key={product.id}>
-                      <img src={product.image} alt="" />
-                      <div className="cart-item-info">
-                        <h3>{product.name}</h3>
-                        <p>{formatPrice(product.priceCents / 100)}</p>
-                        <div className="quantity-controls">
-                          <button
-                            onClick={() => updateQuantity(product, -1)}
-                            aria-label={`Decrease ${product.name} quantity`}
-                          >
-                            −
-                          </button>
-                          <span>{cart[product.id]}</span>
-                          <button
-                            onClick={() => updateQuantity(product, 1)}
-                            disabled={cart[product.id] >= product.stock}
-                            aria-label={`Increase ${product.name} quantity`}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        className="remove-button"
-                        onClick={() =>
-                          setCart((current) => {
-                            const updated = { ...current };
-                            delete updated[product.id];
-                            return updated;
-                          })
-                        }
-                        aria-label={`Remove ${product.name}`}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+
+                <div className="empty-state">
+
+                  <span>⌕</span>
+
+                  <h3>No products found</h3>
+
+                  <p>
+                    Try another search or change your filters.
+                  </p>
+
+                  <button
+                      className="reset-button"
+                      onClick={() => {
+                        setSearch("");
+                        setCategory("All");
+                        setShowWishlist(false);
+                      }}
+                  >
+                    Show all products
+                  </button>
+
                 </div>
 
-                <div className="cart-total">
-                  <span>Subtotal</span>
-                  <strong>{formatPrice(cartTotal)}</strong>
-                </div>
-                <p className="cart-note">
-                  Shipping and final charges are calculated at checkout.
-                </p>
-                <button
-                    className="checkout-button"
-                    onClick={() => {
-                      const checkoutItems = cartItems.map((product) => ({
-                        id: product.id,
-                        name: product.name,
-                        image: product.image.startsWith("/")
-                            ? product.image
-                            : `/${product.image}`,
-                        price: product.priceCents / 100,
-                        qty: cart[product.id],
-                        category: product.category,
-                      }));
-
-                      sessionStorage.setItem(
-                          "checkoutItems",
-                          JSON.stringify(checkoutItems)
-                      );
-
-                      console.log("CHECKOUT ITEMS:", checkoutItems);
-
-                      navigate("/checkout/address");
-                    }}
-                >
-                  Proceed to checkout
-                </button>
-              </>
             )}
-          </aside>
-        </div>
-      )}
-    </div>
+
+          </section>
+
+        </main>
+
+        {/* Shopping Cart */}
+        {showCart && (
+
+            <div
+                className="overlay"
+                onClick={() => setShowCart(false)}
+            >
+
+              <aside
+                  className="cart-panel"
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label="Shopping cart"
+              >
+
+                <div className="panel-heading">
+
+                  <div>
+                    <p className="eyebrow">YOUR SELECTION</p>
+                    <h2>Shopping cart</h2>
+                  </div>
+
+                  <button
+                      className="close-button"
+                      onClick={() => setShowCart(false)}
+                      aria-label="Close cart"
+                  >
+                    ×
+                  </button>
+
+                </div>
+
+                {cartItems.length === 0 ? (
+
+                    <div className="empty-state">
+                      <h3>Your cart is empty</h3>
+                      <p>Add a product to get started.</p>
+                    </div>
+
+                ) : (
+
+                    <>
+
+                      <div className="cart-items">
+
+                        {cartItems.map((product) => (
+
+                            <div className="cart-item" key={product.id}>
+
+                              <img src={product.image} alt="" />
+
+                              <div className="cart-item-info">
+
+                                <h3>{product.name}</h3>
+
+                                <p>
+                                  {formatPrice(product.priceCents / 100)}
+                                </p>
+
+                                <div className="quantity-controls">
+
+                                  <button
+                                      onClick={() => updateQuantity(product, -1)}
+                                      aria-label={`Decrease ${product.name} quantity`}
+                                  >
+                                    −
+                                  </button>
+
+                                  <span>{cart[product.id]}</span>
+
+                                  <button
+                                      onClick={() => updateQuantity(product, 1)}
+                                      disabled={
+                                          cart[product.id] >= product.stock
+                                      }
+                                      aria-label={`Increase ${product.name} quantity`}
+                                  >
+                                    +
+                                  </button>
+
+                                </div>
+
+                              </div>
+
+                              <button
+                                  className="remove-button"
+                                  onClick={() =>
+                                      setCart((current) => {
+                                        const updated = { ...current };
+                                        delete updated[product.id];
+                                        return updated;
+                                      })
+                                  }
+                                  aria-label={`Remove ${product.name}`}
+                              >
+                                Remove
+                              </button>
+
+                            </div>
+
+                        ))}
+
+                      </div>
+
+                      <div className="cart-total">
+                        <span>Subtotal</span>
+                        <strong>{formatPrice(cartTotal)}</strong>
+                      </div>
+
+                      <p className="cart-note">
+                        Shipping and final charges are calculated at checkout.
+                      </p>
+
+                      <button
+                          className="checkout-button"
+                          onClick={() => {
+
+                            const checkoutItems = cartItems.map((product) => ({
+                              id: product.id,
+                              name: product.name,
+                              image: product.image,
+                              price: product.priceCents / 100,
+                              qty: cart[product.id],
+                              category: product.category,
+                            }));
+
+                            sessionStorage.setItem(
+                                "checkoutItems",
+                                JSON.stringify(checkoutItems)
+                            );
+
+                            console.log("CHECKOUT ITEMS:", checkoutItems);
+
+                            navigate("/checkout/address");
+
+                          }}
+                      >
+                        Proceed to checkout
+                      </button>
+
+                    </>
+
+                )}
+
+              </aside>
+
+            </div>
+
+        )}
+
+      </div>
   );
 }
 
