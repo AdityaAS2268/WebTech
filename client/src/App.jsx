@@ -237,7 +237,7 @@ function App() {
             }}
             aria-pressed={showProfile}
           >
-            👤 Profile
+            Profile
           </button>
 
           <button

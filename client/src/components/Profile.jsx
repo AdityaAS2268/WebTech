@@ -6,6 +6,35 @@ import "./Profile.css";
  * ShopSphere User Profile & Address Management Component
  * Module: Profile, Security (Password), and 1:N Address Book CRUD
  */
+
+// Custom vector icons (0 emojis, sleek stroke SVGs)
+function UserIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function ShieldLockIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function MapPinIcon({ size = 15 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
 export default function Profile({ onBackToShop }) {
   const navigate = useNavigate();
 
@@ -355,19 +384,19 @@ export default function Profile({ onBackToShop }) {
             className={`profile-tab-button ${activeTab === "personal" ? "is-active" : ""}`}
             onClick={() => setActiveTab("personal")}
           >
-            <span>👤</span> Personal Info
+            <UserIcon /> Personal Info
           </button>
           <button
             className={`profile-tab-button ${activeTab === "security" ? "is-active" : ""}`}
             onClick={() => setActiveTab("security")}
           >
-            <span>🔒</span> Security
+            <ShieldLockIcon /> Security
           </button>
           <button
             className={`profile-tab-button ${activeTab === "addresses" ? "is-active" : ""}`}
             onClick={() => setActiveTab("addresses")}
           >
-            <span>📍</span> Address Book
+            <MapPinIcon /> Address Book
             <span className="tab-badge">{addresses.length}</span>
           </button>
         </nav>
@@ -559,7 +588,9 @@ export default function Profile({ onBackToShop }) {
 
                 {addresses.length === 0 ? (
                   <div className="address-empty-state">
-                    <div className="address-empty-icon">📍</div>
+                    <div className="address-empty-icon">
+                      <MapPinIcon size={32} />
+                    </div>
                     <h3>No saved addresses found</h3>
                     <p>Add a delivery address to complete orders with a single tap.</p>
                     <button className="profile-btn-primary" onClick={handleOpenAddAddress}>
