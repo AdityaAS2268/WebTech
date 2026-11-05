@@ -1,6 +1,13 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import db from "../db.js";
+import {
+  getAddressesForUser,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  setDefaultAddress
+} from "../addressStore.js";
 
 const router = express.Router();
 
@@ -15,25 +22,6 @@ let fallbackUser = {
   status: "Active",
   created_at: new Date().toISOString()
 };
-
-let fallbackAddresses = [
-  {
-    address_id: 1,
-    user_id: 1,
-    address_line: "Hostel Block 4, Room 210, Tech Campus",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560001"
-  },
-  {
-    address_id: 2,
-    user_id: 1,
-    address_line: "Flat 302, Green Valley Apts",
-    city: "Mysuru",
-    state: "Karnataka",
-    pincode: "570001"
-  }
-];
 
 // Helper: validate phone number
 const isValidPhone = (phone) => {
@@ -54,10 +42,11 @@ const isValidPasswordComplexity = (password) => {
 
 // =========================================================================
 // 1. GET /api/profile
-// Returns user details and all linked addresses
+// Returns user details and all linked addresses (synced with checkout)
 // =========================================================================
 router.get("/", async (req, res) => {
   const userId = 1;
+  const addresses = await getAddressesForUser("USR1001");
 
   if (db) {
     try {
@@ -67,11 +56,6 @@ router.get("/", async (req, res) => {
       );
 
       if (users.length > 0) {
-        const [addresses] = await db.query(
-          "SELECT address_id, user_id, address_line, city, state, pincode FROM addresses WHERE user_id = ? ORDER BY address_id DESC",
-          [userId]
-        );
-
         return res.json({
           success: true,
           source: "database",
@@ -92,7 +76,7 @@ router.get("/", async (req, res) => {
     source: "fallback",
     user: {
       ...fallbackUser,
-      addresses: fallbackAddresses
+      addresses: addresses
     }
   });
 });
@@ -129,6 +113,7 @@ router.put("/", async (req, res) => {
   const trimmedName = name.trim();
   const trimmedMobile = mobile.trim();
   const trimmedEmail = email.trim();
+  const addresses = await getAddressesForUser("USR1001");
 
   if (db) {
     try {
@@ -147,7 +132,8 @@ router.put("/", async (req, res) => {
             name: trimmedName,
             mobile: trimmedMobile,
             email: trimmedEmail,
-            role: fallbackUser.role
+            role: fallbackUser.role,
+            addresses
           }
         });
       }
@@ -167,7 +153,7 @@ router.put("/", async (req, res) => {
     message: "Profile updated successfully!",
     user: {
       ...fallbackUser,
-      addresses: fallbackAddresses
+      addresses
     }
   });
 });
@@ -258,182 +244,126 @@ router.put("/password", async (req, res) => {
 });
 
 // =========================================================================
-// 4. Address Management Routes (CRUD)
+// 4. Address Management Routes (CRUD) - Synced with Delivery Checkout
 // =========================================================================
 
 // GET /api/profile/addresses
 router.get("/addresses", async (req, res) => {
-  const userId = 1;
-
-  if (db) {
-    try {
-      const [rows] = await db.query(
-        "SELECT address_id, user_id, address_line, city, state, pincode FROM addresses WHERE user_id = ? ORDER BY address_id DESC",
-        [userId]
-      );
-      return res.json({ success: true, addresses: rows || [] });
-    } catch (err) {
-      console.warn("MySQL get addresses error:", err.message);
-    }
-  }
-
-  return res.json({ success: true, addresses: fallbackAddresses });
+  const addresses = await getAddressesForUser("USR1001");
+  return res.json({ success: true, addresses });
 });
 
 // POST /api/profile/addresses
 router.post("/addresses", async (req, res) => {
-  const userId = 1;
-  const { address_line, city, state, pincode } = req.body;
+  const line1 = req.body.line1 || req.body.AddressLine1 || req.body.address_line || "";
+  const city = req.body.city || req.body.City || "";
+  const state = req.body.state || req.body.State || "";
+  const pincode = req.body.pincode || req.body.PinCode || "";
 
-  if (!address_line || !address_line.trim()) {
+  if (!line1.trim()) {
     return res.status(400).json({ success: false, message: "Street address is required." });
   }
-  if (!city || !city.trim()) {
+  if (!city.trim()) {
     return res.status(400).json({ success: false, message: "City is required." });
   }
-  if (!state || !state.trim()) {
+  if (!state.trim()) {
     return res.status(400).json({ success: false, message: "State is required." });
   }
-  if (!pincode || !/^[0-9]{5,10}$/.test(pincode.trim())) {
-    return res.status(400).json({ success: false, message: "Pincode must be 5 to 10 digits." });
+  if (!pincode.trim()) {
+    return res.status(400).json({ success: false, message: "Pincode is required." });
   }
 
-  const cleanAddr = {
-    address_line: address_line.trim(),
-    city: city.trim(),
-    state: state.trim(),
-    pincode: pincode.trim()
-  };
+  try {
+    const saved = await addAddress({
+      ...req.body,
+      line1,
+      city,
+      state,
+      pincode,
+      userID: req.body.userID || "USR1001"
+    });
 
-  if (db) {
-    try {
-      const [result] = await db.query(
-        "INSERT INTO addresses (user_id, address_line, city, state, pincode) VALUES (?, ?, ?, ?, ?)",
-        [userId, cleanAddr.address_line, cleanAddr.city, cleanAddr.state, cleanAddr.pincode]
-      );
-
-      const newAddress = {
-        address_id: result.insertId,
-        user_id: userId,
-        ...cleanAddr
-      };
-
-      return res.status(201).json({
-        success: true,
-        message: "Address added successfully!",
-        address: newAddress
-      });
-    } catch (err) {
-      console.warn("MySQL insert address error:", err.message);
-    }
+    return res.status(201).json({
+      success: true,
+      message: "Address added successfully!",
+      address: saved
+    });
+  } catch (err) {
+    console.error("Error adding profile address:", err);
+    return res.status(500).json({ success: false, message: "Error adding address" });
   }
-
-  const newAddress = {
-    address_id: Date.now(),
-    user_id: userId,
-    ...cleanAddr
-  };
-  fallbackAddresses.unshift(newAddress);
-
-  return res.status(201).json({
-    success: true,
-    message: "Address added successfully!",
-    address: newAddress
-  });
 });
 
 // PUT /api/profile/addresses/:id
 router.put("/addresses/:id", async (req, res) => {
-  const userId = 1;
-  const addressId = parseInt(req.params.id, 10);
-  const { address_line, city, state, pincode } = req.body;
+  const addressId = req.params.id;
+  const line1 = req.body.line1 || req.body.AddressLine1 || req.body.address_line || "";
+  const city = req.body.city || req.body.City || "";
+  const state = req.body.state || req.body.State || "";
+  const pincode = req.body.pincode || req.body.PinCode || "";
 
-  if (!address_line || !address_line.trim()) {
+  if (!line1.trim()) {
     return res.status(400).json({ success: false, message: "Street address is required." });
   }
-  if (!city || !city.trim()) {
+  if (!city.trim()) {
     return res.status(400).json({ success: false, message: "City is required." });
   }
-  if (!state || !state.trim()) {
+  if (!state.trim()) {
     return res.status(400).json({ success: false, message: "State is required." });
   }
-  if (!pincode || !/^[0-9]{5,10}$/.test(pincode.trim())) {
-    return res.status(400).json({ success: false, message: "Pincode must be 5 to 10 digits." });
+  if (!pincode.trim()) {
+    return res.status(400).json({ success: false, message: "Pincode is required." });
   }
 
-  const cleanAddr = {
-    address_line: address_line.trim(),
-    city: city.trim(),
-    state: state.trim(),
-    pincode: pincode.trim()
-  };
+  try {
+    const updated = await updateAddress({
+      ...req.body,
+      id: addressId,
+      line1,
+      city,
+      state,
+      pincode,
+      userID: req.body.userID || "USR1001"
+    });
 
-  if (db) {
-    try {
-      const [result] = await db.query(
-        "UPDATE addresses SET address_line = ?, city = ?, state = ?, pincode = ? WHERE address_id = ? AND user_id = ?",
-        [cleanAddr.address_line, cleanAddr.city, cleanAddr.state, cleanAddr.pincode, addressId, userId]
-      );
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ success: false, message: "Address not found or unauthorized." });
-      }
-
-      return res.json({
-        success: true,
-        message: "Address updated successfully!",
-        address: { address_id: addressId, user_id: userId, ...cleanAddr }
-      });
-    } catch (err) {
-      console.warn("MySQL update address error:", err.message);
-    }
-  }
-
-  const idx = fallbackAddresses.findIndex((a) => a.address_id === addressId);
-  if (idx !== -1) {
-    fallbackAddresses[idx] = { address_id: addressId, user_id: userId, ...cleanAddr };
     return res.json({
       success: true,
       message: "Address updated successfully!",
-      address: fallbackAddresses[idx]
+      address: updated
     });
+  } catch (err) {
+    console.error("Error updating profile address:", err);
+    return res.status(500).json({ success: false, message: "Error updating address" });
   }
-
-  return res.status(404).json({ success: false, message: "Address not found." });
 });
 
 // DELETE /api/profile/addresses/:id
 router.delete("/addresses/:id", async (req, res) => {
-  const userId = 1;
-  const addressId = parseInt(req.params.id, 10);
-
-  if (db) {
-    try {
-      const [result] = await db.query(
-        "DELETE FROM addresses WHERE address_id = ? AND user_id = ?",
-        [addressId, userId]
-      );
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ success: false, message: "Address not found or unauthorized." });
-      }
-
-      return res.json({
-        success: true,
-        message: "Address deleted successfully!",
-        address_id: addressId
-      });
-    } catch (err) {
-      console.warn("MySQL delete address error:", err.message);
-    }
+  try {
+    await deleteAddress(req.params.id, "USR1001");
+    return res.json({
+      success: true,
+      message: "Address deleted successfully!",
+      address_id: req.params.id
+    });
+  } catch (err) {
+    console.error("Error deleting profile address:", err);
+    return res.status(500).json({ success: false, message: "Error deleting address" });
   }
+});
 
-  fallbackAddresses = fallbackAddresses.filter((a) => a.address_id !== addressId);
-  return res.json({
-    success: true,
-    message: "Address deleted successfully!",
-    address_id: addressId
-  });
+// PUT /api/profile/addresses/:id/default
+router.put("/addresses/:id/default", async (req, res) => {
+  try {
+    await setDefaultAddress(req.params.id, "USR1001");
+    return res.json({
+      success: true,
+      message: "Default address updated!"
+    });
+  } catch (err) {
+    console.error("Error setting default address:", err);
+    return res.status(500).json({ success: false, message: "Error setting default address" });
+  }
 });
 
 export default router;

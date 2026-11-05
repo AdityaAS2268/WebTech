@@ -75,10 +75,15 @@ export default function Profile({ onBackToShop }) {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null); // null = add, object = edit
   const [addressForm, setAddressForm] = useState({
-    address_line: "",
+    label: "Home",
+    name: "",
+    phone: "",
+    line1: "",
+    line2: "",
     city: "",
     state: "",
-    pincode: ""
+    pincode: "",
+    isDefault: false
   });
   const [addressErrors, setAddressErrors] = useState({});
   const [savingAddress, setSavingAddress] = useState(false);
@@ -238,7 +243,17 @@ export default function Profile({ onBackToShop }) {
   // 4. Address Modal Handlers
   const handleOpenAddAddress = () => {
     setEditingAddress(null);
-    setAddressForm({ address_line: "", city: "", state: "", pincode: "" });
+    setAddressForm({
+      label: "Home",
+      name: user.name || "ABCDEFGH",
+      phone: user.mobile || "+91 98765 43210",
+      line1: "",
+      line2: "",
+      city: "",
+      state: "",
+      pincode: "",
+      isDefault: addresses.length === 0
+    });
     setAddressErrors({});
     setIsAddressModalOpen(true);
   };
@@ -246,10 +261,15 @@ export default function Profile({ onBackToShop }) {
   const handleOpenEditAddress = (addr) => {
     setEditingAddress(addr);
     setAddressForm({
-      address_line: addr.address_line,
-      city: addr.city,
-      state: addr.state,
-      pincode: addr.pincode
+      label: addr.label || "Home",
+      name: addr.name || user.name || "",
+      phone: addr.phone || user.mobile || "",
+      line1: addr.line1 || addr.address_line || "",
+      line2: addr.line2 || "",
+      city: addr.city || "",
+      state: addr.state || "",
+      pincode: addr.pincode || "",
+      isDefault: Boolean(addr.isDefault)
     });
     setAddressErrors({});
     setIsAddressModalOpen(true);
@@ -260,7 +280,9 @@ export default function Profile({ onBackToShop }) {
     setAddressErrors({});
 
     const errors = {};
-    if (!addressForm.address_line.trim()) errors.address_line = "Address line is required.";
+    if (!addressForm.name.trim()) errors.name = "Recipient name is required.";
+    if (!addressForm.phone.trim()) errors.phone = "Phone number is required.";
+    if (!addressForm.line1.trim()) errors.line1 = "Address line 1 is required.";
     if (!addressForm.city.trim()) errors.city = "City is required.";
     if (!addressForm.state.trim()) errors.state = "State is required.";
     if (!addressForm.pincode.trim() || !/^[0-9]{5,10}$/.test(addressForm.pincode.trim())) {
@@ -274,9 +296,11 @@ export default function Profile({ onBackToShop }) {
 
     try {
       setSavingAddress(true);
+      const targetId = editingAddress?.id || editingAddress?.address_id;
+
       if (editingAddress) {
         // Edit PUT
-        const res = await fetch(`http://localhost:3000/api/profile/addresses/${editingAddress.address_id}`, {
+        const res = await fetch(`http://localhost:3000/api/profile/addresses/${targetId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(addressForm)
@@ -284,7 +308,12 @@ export default function Profile({ onBackToShop }) {
         const data = await res.json();
         if (res.ok && data.success) {
           setAddresses((prev) =>
-            prev.map((a) => (a.address_id === editingAddress.address_id ? data.address : a))
+            prev.map((a) => {
+              const currentId = a.id || a.address_id;
+              if (currentId === targetId) return data.address;
+              if (addressForm.isDefault) return { ...a, isDefault: false };
+              return a;
+            })
           );
           showAlert("success", "Address updated successfully.");
           setIsAddressModalOpen(false);
@@ -300,7 +329,10 @@ export default function Profile({ onBackToShop }) {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          setAddresses((prev) => [data.address, ...prev]);
+          setAddresses((prev) => {
+            const list = addressForm.isDefault ? prev.map((a) => ({ ...a, isDefault: false })) : [...prev];
+            return [data.address, ...list];
+          });
           showAlert("success", "Address added successfully.");
           setIsAddressModalOpen(false);
         } else {
@@ -314,6 +346,25 @@ export default function Profile({ onBackToShop }) {
     }
   };
 
+  const handleSetDefaultAddress = async (addressId) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/profile/addresses/${addressId}/default`, {
+        method: "PUT"
+      });
+      if (res.ok) {
+        setAddresses((prev) =>
+          prev.map((a) => ({
+            ...a,
+            isDefault: (a.id || a.address_id) === addressId
+          }))
+        );
+        showAlert("success", "Default delivery address updated.");
+      }
+    } catch (err) {
+      showAlert("error", "Error setting default address.");
+    }
+  };
+
   const handleDeleteAddress = async (addressId) => {
     if (!window.confirm("Are you sure you want to delete this delivery address?")) return;
 
@@ -323,7 +374,7 @@ export default function Profile({ onBackToShop }) {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setAddresses((prev) => prev.filter((a) => a.address_id !== addressId));
+        setAddresses((prev) => prev.filter((a) => (a.id || a.address_id) !== addressId));
         showAlert("success", "Address deleted successfully.");
       } else {
         showAlert("error", data.message || "Failed to delete address.");
@@ -599,36 +650,52 @@ export default function Profile({ onBackToShop }) {
                   </div>
                 ) : (
                   <div className="address-cards-grid">
-                    {addresses.map((addr) => (
-                      <div key={addr.address_id} className="address-item-card">
-                        <div>
-                          <div className="address-card-header">
-                            <span className="address-tag">Delivery Destination</span>
+                    {addresses.map((addr) => {
+                      const addrId = addr.id || addr.address_id;
+                      return (
+                        <div key={addrId} className="address-item-card">
+                          <div>
+                            <div className="address-card-header">
+                              <span className="address-tag">{addr.label || "Delivery Destination"}</span>
+                              {addr.isDefault && (
+                                <span className="default-pill-badge">DEFAULT</span>
+                              )}
+                            </div>
+                            <div className="address-card-body">
+                              <p className="addr-recipient">{addr.name || user.name}</p>
+                              <p className="addr-street">{addr.line1 || addr.address_line}</p>
+                              {addr.line2 && <p className="addr-street2">{addr.line2}</p>}
+                              <p className="addr-city-state">
+                                {addr.city}, {addr.state} - {addr.pincode}
+                              </p>
+                              {addr.phone && <p className="addr-phone">{addr.phone}</p>}
+                            </div>
                           </div>
-                          <div className="address-card-body">
-                            <p className="addr-street">{addr.address_line}</p>
-                            <p className="addr-city-state">
-                              {addr.city}, {addr.state}
-                            </p>
-                            <p className="addr-pincode">PIN: {addr.pincode}</p>
+                          <div className="address-card-actions">
+                            <button
+                              className="profile-btn-secondary"
+                              onClick={() => handleOpenEditAddress(addr)}
+                            >
+                              Edit
+                            </button>
+                            {!addr.isDefault && (
+                              <button
+                                className="profile-btn-secondary"
+                                onClick={() => handleSetDefaultAddress(addrId)}
+                              >
+                                Set as Default
+                              </button>
+                            )}
+                            <button
+                              className="profile-btn-danger-outline"
+                              onClick={() => handleDeleteAddress(addrId)}
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
-                        <div className="address-card-actions">
-                          <button
-                            className="profile-btn-secondary"
-                            onClick={() => handleOpenEditAddress(addr)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="profile-btn-danger-outline"
-                            onClick={() => handleDeleteAddress(addr.address_id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -652,35 +719,89 @@ export default function Profile({ onBackToShop }) {
               </div>
 
               <form onSubmit={handleAddressSubmit}>
-                <div className="form-group-item" style={{ marginBottom: "14px" }}>
-                  <label htmlFor="modal-street">Street Address / House No.</label>
+                <div className="form-grid-2col">
+                  <div className="form-group-item">
+                    <label htmlFor="modal-label">Address Label</label>
+                    <select
+                      id="modal-label"
+                      className="profile-input"
+                      value={addressForm.label}
+                      onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
+                    >
+                      <option value="Home">Home</option>
+                      <option value="Work">Work</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group-item">
+                    <label htmlFor="modal-name">Recipient Name</label>
+                    <input
+                      id="modal-name"
+                      type="text"
+                      placeholder="e.g. ABCDEFGH"
+                      className={`profile-input ${addressErrors.name ? "is-error" : ""}`}
+                      value={addressForm.name}
+                      onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
+                    />
+                    {addressErrors.name && (
+                      <span className="input-hint-error">{addressErrors.name}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group-item" style={{ marginTop: "12px" }}>
+                  <label htmlFor="modal-phone">Contact Phone</label>
                   <input
-                    id="modal-street"
-                    type="text"
-                    placeholder="e.g. 102 Park Avenue, Apartment 4B"
-                    className={`profile-input ${addressErrors.address_line ? "is-error" : ""}`}
-                    value={addressForm.address_line}
-                    onChange={(e) =>
-                      setAddressForm({ ...addressForm, address_line: e.target.value })
-                    }
+                    id="modal-phone"
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210"
+                    className={`profile-input ${addressErrors.phone ? "is-error" : ""}`}
+                    value={addressForm.phone}
+                    onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
                   />
-                  {addressErrors.address_line && (
-                    <span className="input-hint-error">{addressErrors.address_line}</span>
+                  {addressErrors.phone && (
+                    <span className="input-hint-error">{addressErrors.phone}</span>
                   )}
                 </div>
 
-                <div className="form-grid-2col">
+                <div className="form-group-item" style={{ marginTop: "12px" }}>
+                  <label htmlFor="modal-line1">Address Line 1 (House/Flat, Street)</label>
+                  <input
+                    id="modal-line1"
+                    type="text"
+                    placeholder="e.g. 24, Lake View Road"
+                    className={`profile-input ${addressErrors.line1 ? "is-error" : ""}`}
+                    value={addressForm.line1}
+                    onChange={(e) => setAddressForm({ ...addressForm, line1: e.target.value })}
+                  />
+                  {addressErrors.line1 && (
+                    <span className="input-hint-error">{addressErrors.line1}</span>
+                  )}
+                </div>
+
+                <div className="form-group-item" style={{ marginTop: "12px" }}>
+                  <label htmlFor="modal-line2">Address Line 2 (Area, Landmark)</label>
+                  <input
+                    id="modal-line2"
+                    type="text"
+                    placeholder="e.g. Velachery"
+                    className="profile-input"
+                    value={addressForm.line2}
+                    onChange={(e) => setAddressForm({ ...addressForm, line2: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-grid-2col" style={{ marginTop: "12px" }}>
                   <div className="form-group-item">
                     <label htmlFor="modal-city">City</label>
                     <input
                       id="modal-city"
                       type="text"
-                      placeholder="e.g. Bengaluru"
+                      placeholder="e.g. Chennai"
                       className={`profile-input ${addressErrors.city ? "is-error" : ""}`}
                       value={addressForm.city}
-                      onChange={(e) =>
-                        setAddressForm({ ...addressForm, city: e.target.value })
-                      }
+                      onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
                     />
                     {addressErrors.city && (
                       <span className="input-hint-error">{addressErrors.city}</span>
@@ -692,12 +813,10 @@ export default function Profile({ onBackToShop }) {
                     <input
                       id="modal-state"
                       type="text"
-                      placeholder="e.g. Karnataka"
+                      placeholder="e.g. Tamil Nadu"
                       className={`profile-input ${addressErrors.state ? "is-error" : ""}`}
                       value={addressForm.state}
-                      onChange={(e) =>
-                        setAddressForm({ ...addressForm, state: e.target.value })
-                      }
+                      onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
                     />
                     {addressErrors.state && (
                       <span className="input-hint-error">{addressErrors.state}</span>
@@ -705,21 +824,31 @@ export default function Profile({ onBackToShop }) {
                   </div>
                 </div>
 
-                <div className="form-group-item" style={{ marginTop: "14px" }}>
+                <div className="form-group-item" style={{ marginTop: "12px" }}>
                   <label htmlFor="modal-pincode">Pincode / ZIP</label>
                   <input
                     id="modal-pincode"
                     type="text"
-                    placeholder="e.g. 560001"
+                    placeholder="e.g. 600042"
                     className={`profile-input ${addressErrors.pincode ? "is-error" : ""}`}
                     value={addressForm.pincode}
-                    onChange={(e) =>
-                      setAddressForm({ ...addressForm, pincode: e.target.value })
-                    }
+                    onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
                   />
                   {addressErrors.pincode && (
                     <span className="input-hint-error">{addressErrors.pincode}</span>
                   )}
+                </div>
+
+                <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input
+                    type="checkbox"
+                    id="modal-is-default"
+                    checked={addressForm.isDefault}
+                    onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })}
+                  />
+                  <label htmlFor="modal-is-default" style={{ margin: 0, cursor: "pointer", fontSize: "14px" }}>
+                    Make this my default delivery address
+                  </label>
                 </div>
 
                 <div className="profile-modal-actions">

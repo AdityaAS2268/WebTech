@@ -505,6 +505,36 @@
   border-radius: 6px;
 }
 
+.default-pill-badge {
+  font-family: var(--font-heading);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: var(--profile-primary);
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.address-card-body .addr-recipient {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--profile-text);
+  margin-bottom: 2px;
+}
+
+.address-card-body .addr-street2 {
+  color: var(--profile-text-muted);
+  font-size: 13px;
+}
+
+.address-card-body .addr-phone {
+  font-size: 13px;
+  color: var(--profile-text-muted);
+  margin-top: 6px;
+}
+
 .address-card-body p {
   margin: 4px 0;
   font-size: 14px;

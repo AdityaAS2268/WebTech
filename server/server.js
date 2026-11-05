@@ -4,6 +4,14 @@ import cors from "cors";
 import dotenv from "dotenv";
 import db from "./db.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import {
+  getAddressesForUser,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  setDefaultAddress,
+  addressToCheckoutRow
+} from "./addressStore.js";
 
 dotenv.config();
 
@@ -94,146 +102,69 @@ app.get("/api/payments/:orderId", (req, res) => {
 app.use("/api/profile", profileRoutes);
 app.use("/api/users", profileRoutes);
 
-// Retrieve User Addresses in Delivery Address Page
+// Retrieve User Addresses in Delivery Address Page (Synced with Profile)
 app.post("/api/userAddressesForUserID", async (req, res) => {
   try {
-    const { userID } = req.body
-
-    const [rows] = await db.query("SELECT * FROM UserAddresses where userId = ?", [userID]);
-
-    res.json({
-      result: rows
-    })
-
+    const { userID } = req.body;
+    const addrs = await getAddressesForUser(userID || "USR1001");
+    const rows = addrs.map(addressToCheckoutRow);
+    res.json({ result: rows });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      message: "Database error"
-    })
+    console.error("Error retrieving user addresses:", error);
+    res.status(500).json({ message: "Database error" });
   }
-})
+});
 
-
-
+// Add Address in Checkout / Delivery Page (Synced with Profile)
 app.post("/api/AddAddress", async (req, res) => {
   try {
     const address = req.body;
-
-    const [result] = await db.query(
-        `INSERT INTO UserAddresses (
-                userID,
-                AddressLabel,
-                Name,
-                PhoneNo,
-                PinCode,
-                AddressLine1,
-                AddressLine2,
-                City,
-                State
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          address.userID,
-          address.label,
-          address.name,
-          address.phone,
-          address.pincode,
-          address.line1,
-          address.line2 || null,
-          address.city,
-          address.state
-        ]
-    );
-
+    const newAddr = await addAddress(address);
     res.status(201).json({
       message: "Address added successfully!",
-      insertedId: result.insertId
+      insertedId: newAddr.id,
     });
-
   } catch (error) {
     console.error("Add address error:", error);
-
-    res.status(500).json({
-      message: "Database error"
-    });
+    res.status(500).json({ message: "Database error" });
   }
 });
 
-
-// Update address in MySQL
+// Update Address in Checkout / Delivery Page (Synced with Profile)
 app.post("/api/UpdateAddress", async (req, res) => {
   try {
     const values = req.body;
-
-    const [result] = await db.query(
-        `UPDATE UserAddresses
-             SET AddressLabel = ?,
-                 Name = ?,
-                 PhoneNo = ?,
-                 PinCode = ?,
-                 AddressLine1 = ?,
-                 AddressLine2 = ?,
-                 City = ?,
-                 State = ?,
-                 IsDefault = ?
-             WHERE id = ? AND userID = ?`,
-        [
-          values.label,
-          values.name,
-          values.phone,
-          values.pincode,
-          values.line1,
-          values.line2,
-          values.city,
-          values.state,
-          values.isDefault ? "Y" : "N",
-          values.id,
-          values.userID
-        ]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        message: "Address not found"
-      });
-    }
-
-    res.json({
-      message: "Address updated successfully!"
-    });
-
+    await updateAddress(values);
+    res.json({ message: "Address updated successfully!" });
   } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Database error"
-    });
+    console.error("Update address error:", error);
+    res.status(500).json({ message: "Database error" });
   }
 });
 
+// Update Default Address in Checkout / Delivery Page (Synced with Profile)
 app.post("/api/UpdateDefaultAddress", async (req, res) => {
   try {
-      const { defaultAddressID, userID } = req.body;
-
-      await db.query("update UserAddresses set IsDefault = ? where userID = ?", ["N", userID]);
-      await db.query("update UserAddresses set IsDefault = ? where id = ? and userID = ?", ["Y", defaultAddressID, userID]);
-
+    const { defaultAddressID, userID } = req.body;
+    await setDefaultAddress(defaultAddressID, userID || "USR1001");
+    res.json({ result: "Default address updated!", message: "Default address updated!" });
   } catch (error) {
     console.error("Database error:", error);
-    res.status(500).json({result: "Database error"});
+    res.status(500).json({ result: "Database error" });
   }
-})
+});
 
+// Remove Address in Checkout / Delivery Page (Synced with Profile)
 app.post("/api/RemoveAddress", async (req, res) => {
   try {
     const { addressID, userID } = req.body;
-
-    await db.query("delete from UserAddresses where id = ? and userID = ?", [addressID, userID]);
-
+    await deleteAddress(addressID, userID || "USR1001");
+    res.json({ result: "Address removed!", message: "Address removed!" });
   } catch (error) {
     console.error("Database error:", error);
-    res.status(500).json({result: "Database error"});
+    res.status(500).json({ result: "Database error" });
   }
-})
+});
 
 
 // Fetch all products from MySQL

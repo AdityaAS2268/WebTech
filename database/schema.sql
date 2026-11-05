@@ -38,8 +38,8 @@ CREATE TABLE UserAddresses (
     userID VARCHAR(20) NOT NULL,
     AddressLabel VARCHAR(50) NOT NULL,
     Name VARCHAR(100) NOT NULL,
-    PhoneNo VARCHAR(10) NOT NULL,
-    PinCode VARCHAR(6) NOT NULL,
+    PhoneNo VARCHAR(20) NOT NULL,
+    PinCode VARCHAR(10) NOT NULL,
     AddressLine1 VARCHAR(100) NOT NULL,
     AddressLine2 VARCHAR(100),
     City VARCHAR(100) NOT NULL,
@@ -48,13 +48,13 @@ CREATE TABLE UserAddresses (
 );
 
 INSERT INTO UserAddresses (
-    userId, AddressLabel, Name, PhoneNo, PinCode, AddressLine1, AddressLine2, City, State
+    userID, AddressLabel, Name, PhoneNo, PinCode, AddressLine1, AddressLine2, City, State, IsDefault
 ) VALUES (
-    'USR1001', 'Home', 'Rahul Sharma', '9876543210', '600001',
-    'Flat 4B, Green Valley Apartments', 'Anna Salai', 'Chennai', 'Tamil Nadu'
+    'USR1001', 'Home', 'ABCDEFGH', '+91 98765 43210', '600042',
+    '24, Lake View Road', 'Velachery', 'Chennai', 'Tamil Nadu', 'Y'
 ), (
-    'USR1001', 'Work', 'ABCD', '9876543210', '600001',
-    'Flat 4B, Green Valley Apartments', 'Anna Salai', 'Chennai', 'Tamil Nadu'
+    'USR1001', 'Work', 'ABCD', '+91 98765 43210', '600032',
+    '3rd Floor, Orion Business Centre', 'Guindy Industrial Estate', 'Chennai', 'Tamil Nadu', 'N'
 );
 
 -- 4. Products Table (Catalog Module)
