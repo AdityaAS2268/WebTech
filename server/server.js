@@ -238,3 +238,43 @@ app.post("/api/RemoveAddress", async (req, res) => {
     res.status(500).json({result: "Database error"});
   }
 })
+
+
+// Fetch all products from MySQL
+app.get("/api/products", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+        "SELECT * FROM Products"
+    );
+
+    const products = rows.map((product) => ({
+      id: product.id,
+      name: product.name,
+      image: product.image,
+      priceCents: product.price_cents,
+      stock: product.stock,
+      category: product.type || "General",
+
+      rating: {
+        stars: Number(product.rating_stars || 0),
+        count: product.rating_count || 0
+      },
+
+      keywords: product.keywords || [],
+      sizeChartLink: product.size_chart_link
+    }));
+
+    res.json({
+      success: true,
+      products: products
+    });
+
+  } catch (error) {
+    console.error("Error fetching products:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch products"
+    });
+  }
+});

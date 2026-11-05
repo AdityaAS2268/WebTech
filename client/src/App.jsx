@@ -1,21 +1,26 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { products } from "./data/products";
 import Profile from "./components/Profile";
 import "./App.css";
 
+// Format prices in Indian Rupees
 const formatPrice = (price) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(price);
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price);
 
 function App() {
-
   const navigate = useNavigate();
 
+  // Products fetched from MySQL through Express
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Shopping states
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
@@ -25,11 +30,66 @@ function App() {
   const [showWishlist, setShowWishlist] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  const categories = [
-    "All",
-    ...new Set(products.map((product) => product.category)),
-  ];
+  // Fetch products from MySQL
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await fetch("http://localhost:3000/api/products");
 
+        if (!response.ok) {
+          throw new Error("Failed to fetch products");
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !Array.isArray(data.products)) {
+          throw new Error("Invalid product data received");
+        }
+
+        // Ensure all product properties match the React UI
+        const formattedProducts = data.products.map((product) => ({
+          ...product,
+          id: product.id,
+          name: product.name || "Unnamed Product",
+          image: product.image
+            ? product.image.startsWith("/")
+              ? product.image
+              : `/${product.image}`
+            : "",
+          priceCents: Number(product.priceCents ?? product.price_cents ?? 0),
+          stock: Number(product.stock ?? 10),
+          category: product.category || product.type || "General",
+          rating: {
+            stars: Number(product.rating?.stars ?? product.rating_stars ?? 0),
+            count: Number(product.rating?.count ?? product.rating_count ?? 0),
+          },
+        }));
+
+        setProducts(formattedProducts);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Failed to load products from database.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, []);
+
+  // Compute categories dynamically
+  const categories = useMemo(() => {
+    return [
+      "All",
+      ...new Set(
+        products
+          .map((product) => product.category)
+          .filter(Boolean)
+      ),
+    ];
+  }, [products]);
+
+  // Filter and sort products
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesSearch = product.name
@@ -45,38 +105,38 @@ function App() {
     });
 
     if (sortBy === "price-low") {
-      result.sort((a, b) => a.price - b.price);
+      result.sort((a, b) => a.priceCents - b.priceCents);
     } else if (sortBy === "price-high") {
-      result.sort((a, b) => b.price - a.price);
+      result.sort((a, b) => b.priceCents - a.priceCents);
     } else if (sortBy === "rating") {
-      result.sort((a, b) => b.rating - a.rating);
+      result.sort((a, b) => (b.rating?.stars || 0) - (a.rating?.stars || 0));
     }
 
     return result;
-  }, [search, category, sortBy, showWishlist, wishlist]);
+  }, [products, search, category, sortBy, showWishlist, wishlist]);
 
+  // Cart calculations
   const cartCount = Object.values(cart).reduce(
     (total, quantity) => total + quantity,
-    0,
+    0
   );
 
   const cartItems = products.filter((product) => cart[product.id] > 0);
 
   const cartTotal = cartItems.reduce(
     (total, product) => total + (product.priceCents / 100) * cart[product.id],
-    0,
+    0
   );
 
+  // Cart operations
   function addToCart(product) {
     if (product.stock === 0) return;
 
     setCart((current) => {
       const quantity = current[product.id] || 0;
-
       if (quantity >= product.stock) {
         return current;
       }
-
       return {
         ...current,
         [product.id]: quantity + 1,
@@ -87,17 +147,14 @@ function App() {
   function updateQuantity(product, change) {
     setCart((current) => {
       const nextQuantity = (current[product.id] || 0) + change;
-
       if (nextQuantity <= 0) {
         const updated = { ...current };
         delete updated[product.id];
         return updated;
       }
-
       if (nextQuantity > product.stock) {
         return current;
       }
-
       return {
         ...current,
         [product.id]: nextQuantity,
@@ -109,7 +166,7 @@ function App() {
     setWishlist((current) =>
       current.includes(productId)
         ? current.filter((id) => id !== productId)
-        : [...current, productId],
+        : [...current, productId]
     );
   }
 
@@ -125,8 +182,29 @@ function App() {
     setShowProfile(false);
   }
 
+  // Loading screen
+  if (loading) {
+    return (
+      <div style={{ padding: "4rem", textAlign: "center", fontFamily: "sans-serif" }}>
+        <h2>Loading products from MySQL database...</h2>
+      </div>
+    );
+  }
+
+  // Error screen
+  if (error) {
+    return (
+      <div style={{ padding: "4rem", textAlign: "center", fontFamily: "sans-serif" }}>
+        <h2>{error}</h2>
+        <p>Make sure the Node backend is running and MySQL is connected.</p>
+      </div>
+    );
+  }
+
+  // Main application
   return (
     <div className="shop">
+      {/* Navigation Bar */}
       <header className="navbar">
         <a
           className="brand"
@@ -180,11 +258,13 @@ function App() {
         </nav>
       </header>
 
+      {/* Main Content */}
       <main className="main-content">
         {showProfile ? (
           <Profile onBackToShop={() => setShowProfile(false)} />
         ) : (
           <>
+            {/* Welcome Section */}
             <section className="welcome">
               <div>
                 <p className="eyebrow">YOUR EVERYDAY MARKETPLACE</p>
@@ -206,6 +286,7 @@ function App() {
               </div>
             </section>
 
+            {/* Product Catalogue */}
             <section className="catalogue">
               <div className="catalogue-heading">
                 <div>
@@ -215,115 +296,126 @@ function App() {
                   <h2>{showWishlist ? "Your wishlist" : "Explore products"}</h2>
                 </div>
 
-                <div className="filters">
-                  <label>
-                    Category
-                    <select
-                      value={category}
-                      onChange={(event) => setCategory(event.target.value)}
-                    >
-                      {categories.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Sort by
-                    <select
-                      value={sortBy}
-                      onChange={(event) => setSortBy(event.target.value)}
-                    >
-                      <option value="featured">Featured</option>
-                      <option value="price-low">Price: Low to High</option>
-                      <option value="price-high">Price: High to Low</option>
-                      <option value="rating">Rating</option>
-                    </select>
-                  </label>
-                </div>
+                <label className="sort-control">
+                  <span>Sort by</span>
+                  <select
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value)}
+                  >
+                    <option value="featured">Featured</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                  </select>
+                </label>
               </div>
 
+              {/* Category Filters */}
+              <div className="category-list" aria-label="Product categories">
+                {categories.map((item) => (
+                  <button
+                    key={item}
+                    className={
+                      category === item
+                        ? "category-chip selected"
+                        : "category-chip"
+                    }
+                    onClick={() => setCategory(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+
+              <p className="result-count">
+                {filteredProducts.length} product
+                {filteredProducts.length !== 1 ? "s" : ""} found
+              </p>
+
+              {/* Product Cards */}
               {filteredProducts.length > 0 ? (
                 <div className="product-grid">
                   {filteredProducts.map((product) => {
-                    const quantityInCart = cart[product.id] || 0;
                     const isWishlisted = wishlist.includes(product.id);
+                    const quantity = cart[product.id] || 0;
 
                     return (
                       <article className="product-card" key={product.id}>
-                        <div className="product-image-container">
+                        <div className="product-image">
                           <img
                             src={product.image}
                             alt={product.name}
-                            className="product-image"
+                            loading="lazy"
                           />
                           <button
                             className={
                               isWishlisted
-                                ? "wishlist-button active"
+                                ? "wishlist-button wishlisted"
                                 : "wishlist-button"
                             }
                             onClick={() => toggleWishlist(product.id)}
                             aria-label={
                               isWishlisted
                                 ? `Remove ${product.name} from wishlist`
-                                : `Save ${product.name} to wishlist`
+                                : `Add ${product.name} to wishlist`
                             }
+                            aria-pressed={isWishlisted}
                           >
                             {isWishlisted ? "♥" : "♡"}
                           </button>
+
+                          {product.stock === 0 && (
+                            <span className="stock-badge">Sold out</span>
+                          )}
                         </div>
 
-                        <div className="product-body">
+                        <div className="product-info">
                           <p className="product-category">{product.category}</p>
-                          <h3 className="product-title">{product.name}</h3>
+                          <h3>{product.name}</h3>
 
-                          <div className="rating">
+                          <div className="product-rating">
                             <img
-                              src={`/images/ratings/rating-${Math.round(
-                                product.rating * 10,
-                              )}.png`}
-                              alt={`${product.rating} stars`}
                               className="rating-stars"
+                              src={`/images/ratings/rating-${Math.round(
+                                product.rating.stars * 10
+                              )}.png`}
+                              alt={`${product.rating.stars} out of 5 stars`}
                             />
                             <span className="rating-count">
-                              ({product.ratingCount})
+                              {product.rating.count}
                             </span>
                           </div>
 
                           <div className="product-footer">
-                            <span className="price">
-                              {formatPrice(product.price)}
-                            </span>
-                            <span
-                              className={
-                                product.stock > 0
-                                  ? "stock in-stock"
-                                  : "stock out-of-stock"
+                            <div>
+                              <p className="product-price">
+                                {formatPrice(product.priceCents / 100)}
+                              </p>
+                              <p
+                                className={
+                                  product.stock > 0
+                                    ? "stock-text"
+                                    : "stock-text unavailable"
+                                }
+                              >
+                                {product.stock > 0
+                                  ? `${product.stock} in stock`
+                                  : "Currently unavailable"}
+                              </p>
+                            </div>
+
+                            <button
+                              className="add-button"
+                              onClick={() => addToCart(product)}
+                              disabled={
+                                product.stock === 0 || quantity >= product.stock
                               }
                             >
-                              {product.stock > 0
-                                ? `${product.stock} left`
-                                : "Out of stock"}
-                            </span>
-                          </div>
-
-                          <button
-                            className="add-to-cart-button"
-                            onClick={() => addToCart(product)}
-                            disabled={
-                              product.stock === 0 ||
-                              quantityInCart >= product.stock
-                            }
-                          >
-                            {product.stock === 0
-                              ? "Sold out"
-                              : quantityInCart > 0
-                                ? `In cart (${quantityInCart})`
+                              {quantity > 0
+                                ? `Add more (${quantity})`
                                 : "Add to cart"}
-                          </button>
+                            </button>
+                          </div>
                         </div>
                       </article>
                     );
@@ -331,12 +423,9 @@ function App() {
                 </div>
               ) : (
                 <div className="empty-state">
+                  <span>⌕</span>
                   <h3>No products found</h3>
-                  <p>
-                    {showWishlist
-                      ? "You haven't saved any items yet. Browse products and tap the heart icon to save them here."
-                      : "Try clearing your filters or searching for something else."}
-                  </p>
+                  <p>Try another search or change your filters.</p>
                   <button
                     className="reset-button"
                     onClick={() => {
@@ -354,6 +443,7 @@ function App() {
         )}
       </main>
 
+      {/* Shopping Cart */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside
@@ -427,32 +517,31 @@ function App() {
                   <span>Subtotal</span>
                   <strong>{formatPrice(cartTotal)}</strong>
                 </div>
+
                 <p className="cart-note">
                   Shipping and final charges are calculated at checkout.
                 </p>
+
                 <button
-                    className="checkout-button"
-                    onClick={() => {
-                      const checkoutItems = cartItems.map((product) => ({
-                        id: product.id,
-                        name: product.name,
-                        image: product.image.startsWith("/")
-                            ? product.image
-                            : `/${product.image}`,
-                        price: product.priceCents / 100,
-                        qty: cart[product.id],
-                        category: product.category,
-                      }));
+                  className="checkout-button"
+                  onClick={() => {
+                    const checkoutItems = cartItems.map((product) => ({
+                      id: product.id,
+                      name: product.name,
+                      image: product.image,
+                      price: product.priceCents / 100,
+                      qty: cart[product.id],
+                      category: product.category,
+                    }));
 
-                      sessionStorage.setItem(
-                          "checkoutItems",
-                          JSON.stringify(checkoutItems)
-                      );
+                    sessionStorage.setItem(
+                      "checkoutItems",
+                      JSON.stringify(checkoutItems)
+                    );
 
-                      console.log("CHECKOUT ITEMS:", checkoutItems);
-
-                      navigate("/checkout/address");
-                    }}
+                    console.log("CHECKOUT ITEMS:", checkoutItems);
+                    navigate("/checkout/address");
+                  }}
                 >
                   Proceed to checkout
                 </button>
