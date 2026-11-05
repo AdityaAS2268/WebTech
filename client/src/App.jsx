@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { products } from "./data/products";
 import Profile from "./components/Profile";
 import "./App.css";
 
 const formatPrice = (price) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(price);
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
 
 function App() {
+
+  const navigate = useNavigate();
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
@@ -58,7 +63,7 @@ function App() {
   const cartItems = products.filter((product) => cart[product.id] > 0);
 
   const cartTotal = cartItems.reduce(
-    (total, product) => total + product.price * cart[product.id],
+    (total, product) => total + (product.priceCents / 100) * cart[product.id],
     0,
   );
 
@@ -385,7 +390,7 @@ function App() {
                       <img src={product.image} alt="" />
                       <div className="cart-item-info">
                         <h3>{product.name}</h3>
-                        <p>{formatPrice(product.price)}</p>
+                        <p>{formatPrice(product.priceCents / 100)}</p>
                         <div className="quantity-controls">
                           <button
                             onClick={() => updateQuantity(product, -1)}
@@ -428,12 +433,28 @@ function App() {
                   Shipping and final charges are calculated at checkout.
                 </p>
                 <button
-                  className="checkout-button"
-                  onClick={() =>
-                    alert(
-                      "Checkout integration will be added with the Payment module.",
-                    )
-                  }
+                    className="checkout-button"
+                    onClick={() => {
+                      const checkoutItems = cartItems.map((product) => ({
+                        id: product.id,
+                        name: product.name,
+                        image: product.image.startsWith("/")
+                            ? product.image
+                            : `/${product.image}`,
+                        price: product.priceCents / 100,
+                        qty: cart[product.id],
+                        category: product.category,
+                      }));
+
+                      sessionStorage.setItem(
+                          "checkoutItems",
+                          JSON.stringify(checkoutItems)
+                      );
+
+                      console.log("CHECKOUT ITEMS:", checkoutItems);
+
+                      navigate("/checkout/address");
+                    }}
                 >
                   Proceed to checkout
                 </button>
