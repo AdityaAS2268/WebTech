@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { products as localProducts } from "./data/products";
 import Profile from "./components/Profile";
 import "./App.css";
 
@@ -15,10 +16,9 @@ const formatPrice = (price) =>
 function App() {
   const navigate = useNavigate();
 
-  // Products fetched from MySQL through Express
+  // Products fetched from MySQL through Express, with local fallback
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   // Shopping states
   const [search, setSearch] = useState("");
@@ -30,48 +30,54 @@ function App() {
   const [showWishlist, setShowWishlist] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  // Fetch products from MySQL
+  // Fetch products from MySQL with fallback to local catalog
   useEffect(() => {
     async function fetchProducts() {
       try {
         const response = await fetch("http://localhost:3000/api/products");
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch products");
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+            // Ensure all product properties match the React UI
+            const formattedProducts = data.products.map((product) => ({
+              ...product,
+              id: product.id,
+              name: product.name || "Unnamed Product",
+              image: product.image
+                ? product.image.startsWith("/")
+                  ? product.image
+                  : `/${product.image}`
+                : "",
+              priceCents: Number(product.priceCents ?? product.price_cents ?? 0),
+              stock: Number(product.stock ?? 10),
+              category: product.category || product.type || "General",
+              rating: {
+                stars: Number(product.rating?.stars ?? product.rating_stars ?? 0),
+                count: Number(product.rating?.count ?? product.rating_count ?? 0),
+              },
+            }));
+
+            setProducts(formattedProducts);
+            setLoading(false);
+            return;
+          }
         }
-
-        const data = await response.json();
-
-        if (!data.success || !Array.isArray(data.products)) {
-          throw new Error("Invalid product data received");
-        }
-
-        // Ensure all product properties match the React UI
-        const formattedProducts = data.products.map((product) => ({
-          ...product,
-          id: product.id,
-          name: product.name || "Unnamed Product",
-          image: product.image
-            ? product.image.startsWith("/")
-              ? product.image
-              : `/${product.image}`
-            : "",
-          priceCents: Number(product.priceCents ?? product.price_cents ?? 0),
-          stock: Number(product.stock ?? 10),
-          category: product.category || product.type || "General",
-          rating: {
-            stars: Number(product.rating?.stars ?? product.rating_stars ?? 0),
-            count: Number(product.rating?.count ?? product.rating_count ?? 0),
-          },
-        }));
-
-        setProducts(formattedProducts);
       } catch (err) {
-        console.error("Error fetching products:", err);
-        setError("Failed to load products from database.");
-      } finally {
-        setLoading(false);
+        console.warn("Could not fetch products from MySQL backend, using local catalog:", err.message);
       }
+
+      // Safe fallback to bundled product catalog
+      const fallbackList = (localProducts || []).map((product) => ({
+        ...product,
+        stock: Number(product.stock ?? 15),
+        category: product.category || (product.keywords && product.keywords[0]) || "General",
+        rating: product.rating || { stars: 4.5, count: 50 },
+      }));
+
+      setProducts(fallbackList);
+      setLoading(false);
     }
 
     fetchProducts();
@@ -182,21 +188,11 @@ function App() {
     setShowProfile(false);
   }
 
-  // Loading screen
-  if (loading) {
+  // Loading screen (only until initial products are ready)
+  if (loading && products.length === 0) {
     return (
       <div style={{ padding: "4rem", textAlign: "center", fontFamily: "sans-serif" }}>
-        <h2>Loading products from MySQL database...</h2>
-      </div>
-    );
-  }
-
-  // Error screen
-  if (error) {
-    return (
-      <div style={{ padding: "4rem", textAlign: "center", fontFamily: "sans-serif" }}>
-        <h2>{error}</h2>
-        <p>Make sure the Node backend is running and MySQL is connected.</p>
+        <h2>Loading ShopSphere...</h2>
       </div>
     );
   }

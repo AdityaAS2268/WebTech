@@ -94,12 +94,8 @@ app.get("/api/payments/:orderId", (req, res) => {
 app.use("/api/profile", profileRoutes);
 app.use("/api/users", profileRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
-
 // Retrieve User Addresses in Delivery Address Page
-app.post("/api/userAddressesForUserID", async (req, res) => {res
+app.post("/api/userAddressesForUserID", async (req, res) => {
   try {
     const { userID } = req.body
 
@@ -270,11 +266,16 @@ app.get("/api/products", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.warn("Error fetching products from MySQL (using fallback if needed):", error.message);
 
-    res.status(500).json({
+    res.json({
       success: false,
-      message: "Failed to fetch products"
+      message: "MySQL Products table not ready or offline",
+      products: []
     });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });
