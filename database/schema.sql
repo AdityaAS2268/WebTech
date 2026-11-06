@@ -50,11 +50,11 @@ CREATE TABLE UserAddresses (
 INSERT INTO UserAddresses (
     userID, AddressLabel, Name, PhoneNo, PinCode, AddressLine1, AddressLine2, City, State, IsDefault
 ) VALUES (
-    'USR1001', 'Home', 'ABCDEFGH', '+91 98765 43210', '600042',
-    '24, Lake View Road', 'Velachery', 'Chennai', 'Tamil Nadu', 'Y'
+    'USR1001', 'Home', 'Jane Doe', '+91 98765 43210', '560001',
+    'Hostel Block 4, Room 210', 'Tech Campus', 'Bengaluru', 'Karnataka', 'Y'
 ), (
-    'USR1001', 'Work', 'ABCD', '+91 98765 43210', '600032',
-    '3rd Floor, Orion Business Centre', 'Guindy Industrial Estate', 'Chennai', 'Tamil Nadu', 'N'
+    'USR1001', 'Residence', 'Jane Doe', '+91 98765 43210', '570001',
+    'Flat 302, Green Valley Apartments', 'Jayalakshmipuram', 'Mysuru', 'Karnataka', 'N'
 );
 
 -- 4. Products Table (Catalog Module)

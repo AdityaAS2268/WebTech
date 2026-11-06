@@ -50,7 +50,16 @@ export default function Profile({ onBackToShop }) {
     role: "Customer",
     status: "Active"
   });
-  const [addresses, setAddresses] = useState([]);
+  const [addresses, setAddresses] = useState(() => {
+    try {
+      const saved = localStorage.getItem("shopsphere_user_addresses");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [dataSource, setDataSource] = useState("connected");
   const [loading, setLoading] = useState(true);
 
@@ -110,7 +119,12 @@ export default function Profile({ onBackToShop }) {
           email: data.user.email || "",
           mobile: data.user.mobile || ""
         });
-        setAddresses(data.user.addresses || []);
+        if (Array.isArray(data.user.addresses) && data.user.addresses.length > 0) {
+          setAddresses(data.user.addresses);
+          try {
+            localStorage.setItem("shopsphere_user_addresses", JSON.stringify(data.user.addresses));
+          } catch (e) {}
+        }
         if (data.source) setDataSource(data.source);
       }
     } catch (err) {
@@ -307,14 +321,18 @@ export default function Profile({ onBackToShop }) {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          setAddresses((prev) =>
-            prev.map((a) => {
+          setAddresses((prev) => {
+            const next = prev.map((a) => {
               const currentId = a.id || a.address_id;
               if (currentId === targetId) return data.address;
               if (addressForm.isDefault) return { ...a, isDefault: false };
               return a;
-            })
-          );
+            });
+            try {
+              localStorage.setItem("shopsphere_user_addresses", JSON.stringify(next));
+            } catch (e) {}
+            return next;
+          });
           showAlert("success", "Address updated successfully.");
           setIsAddressModalOpen(false);
         } else {
@@ -331,7 +349,11 @@ export default function Profile({ onBackToShop }) {
         if (res.ok && data.success) {
           setAddresses((prev) => {
             const list = addressForm.isDefault ? prev.map((a) => ({ ...a, isDefault: false })) : [...prev];
-            return [data.address, ...list];
+            const next = [data.address, ...list];
+            try {
+              localStorage.setItem("shopsphere_user_addresses", JSON.stringify(next));
+            } catch (e) {}
+            return next;
           });
           showAlert("success", "Address added successfully.");
           setIsAddressModalOpen(false);
@@ -352,12 +374,16 @@ export default function Profile({ onBackToShop }) {
         method: "PUT"
       });
       if (res.ok) {
-        setAddresses((prev) =>
-          prev.map((a) => ({
+        setAddresses((prev) => {
+          const next = prev.map((a) => ({
             ...a,
             isDefault: (a.id || a.address_id) === addressId
-          }))
-        );
+          }));
+          try {
+            localStorage.setItem("shopsphere_user_addresses", JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
         showAlert("success", "Default delivery address updated.");
       }
     } catch (err) {
@@ -374,7 +400,13 @@ export default function Profile({ onBackToShop }) {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setAddresses((prev) => prev.filter((a) => (a.id || a.address_id) !== addressId));
+        setAddresses((prev) => {
+          const next = prev.filter((a) => (a.id || a.address_id) !== addressId);
+          try {
+            localStorage.setItem("shopsphere_user_addresses", JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
         showAlert("success", "Address deleted successfully.");
       } else {
         showAlert("error", data.message || "Failed to delete address.");

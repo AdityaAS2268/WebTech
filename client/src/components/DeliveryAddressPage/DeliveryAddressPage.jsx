@@ -13,8 +13,34 @@ export default function DeliveryAddressPage() {
 
     const navigate = useNavigate();
 
-    const [addresses, setAddresses] = useState(initialAddresses);
-    const [selectedId, setSelectedId] = useState(1);
+    const [addresses, setAddresses] = useState(() => {
+        try {
+            const saved = localStorage.getItem("shopsphere_user_addresses");
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed;
+                }
+            }
+        } catch (e) {
+            console.warn("Could not read addresses from localStorage", e);
+        }
+        return initialAddresses;
+    });
+
+    const [selectedId, setSelectedId] = useState(() => {
+        try {
+            const saved = localStorage.getItem("shopsphere_user_addresses");
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const defaultAddr = parsed.find((a) => a.isDefault);
+                if (defaultAddr) return defaultAddr.id;
+                if (parsed.length > 0) return parsed[0].id;
+            }
+        } catch (e) {}
+        return 1;
+    });
+
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyAddress);
@@ -22,51 +48,75 @@ export default function DeliveryAddressPage() {
     const [notice, setNotice] = useState("");
 
     const selectedAddress = useMemo(
-        () => addresses.find((address) => address.id === selectedId),
+        () => addresses.find((address) => address.id === selectedId) || addresses[0],
         [addresses, selectedId]
     );
 
     async function RetrieveUserAddresses(userID) {
         try {
-            const response = await fetch("/api/userAddressesForUserID", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ userID: userID })
-            })
-
-            const data = await response.json();
-            console.log(data.result);
-
-            var retrievedAddresss = [];
-
-            data.result.map((address) => {
-                const currentAddress = {
-                    id: address.id,
-                    label: address.AddressLabel,
-                    name: address.Name,
-                    phone: address.PhoneNo,
-                    line1: address.AddressLine1,
-                    line2: address.AddressLine2,
-                    city: address.City,
-                    state: address.State,
-                    pincode: address.PinCode,
-                    isDefault: address.IsDefault === "Y",
-                    userID: address.userID
+            let fetched = null;
+            // First attempt: fetch from unified profile addresses
+            try {
+                const res = await fetch("http://localhost:3000/api/profile/addresses");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.addresses) && data.addresses.length > 0) {
+                        fetched = data.addresses;
+                    }
                 }
+            } catch (e) {
+                console.warn("Could not fetch from /api/profile/addresses:", e);
+            }
 
-                if (address.IsDefault === "Y") {
-                    setSelectedId(address.id)
+            // Second attempt: fetch from /api/userAddressesForUserID
+            if (!fetched) {
+                const response = await fetch("/api/userAddressesForUserID", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userID: userID || "USR1001" })
+                });
+                const data = await response.json();
+                if (data.result && Array.isArray(data.result) && data.result.length > 0) {
+                    fetched = data.result.map((address) => ({
+                        id: address.id,
+                        label: address.AddressLabel || address.label || "Home",
+                        name: address.Name || address.name || "Jane Doe",
+                        phone: address.PhoneNo || address.phone || "+91 98765 43210",
+                        line1: address.AddressLine1 || address.line1 || "",
+                        line2: address.AddressLine2 || address.line2 || "",
+                        city: address.City || address.city || "",
+                        state: address.State || address.state || "",
+                        pincode: address.PinCode || address.pincode || "",
+                        isDefault: address.IsDefault === "Y" || address.isDefault === true,
+                        userID: address.userID || "USR1001"
+                    }));
                 }
+            }
 
-                retrievedAddresss.push(currentAddress);
-            })
+            if (fetched && fetched.length > 0) {
+                const normalized = fetched.map((address) => ({
+                    id: address.id || address.address_id,
+                    label: address.label || address.AddressLabel || "Home",
+                    name: address.name || address.Name || "Jane Doe",
+                    phone: address.phone || address.PhoneNo || "+91 98765 43210",
+                    line1: address.line1 || address.AddressLine1 || address.address_line || "",
+                    line2: address.line2 || address.AddressLine2 || "",
+                    city: address.city || address.City || "",
+                    state: address.state || address.State || "",
+                    pincode: String(address.pincode || address.PinCode || ""),
+                    isDefault: address.isDefault === true || address.IsDefault === "Y",
+                    userID: address.userID || "USR1001"
+                }));
 
-            setAddresses(retrievedAddresss);
-
+                setAddresses(normalized);
+                const defaultAddr = normalized.find((a) => a.isDefault) || normalized[0];
+                if (defaultAddr) setSelectedId(defaultAddr.id);
+                try {
+                    localStorage.setItem("shopsphere_user_addresses", JSON.stringify(normalized));
+                } catch (e) {}
+            }
         } catch (error) {
-            console.log(error);
+            console.error("RetrieveUserAddresses failed:", error);
         }
     }
 
@@ -178,16 +228,17 @@ export default function DeliveryAddressPage() {
                 await UpdateAddressToDatabase(addressToUpdate);
 
                 // Update React state only after success
-                setAddresses(current =>
-                    current.map(address =>
-                        address.id === editingId
-                            ? { ...address, ...cleaned }
-                            : address
-                    )
+                const nextAddresses = addresses.map(address =>
+                    address.id === editingId
+                        ? { ...address, ...cleaned }
+                        : address
                 );
+                setAddresses(nextAddresses);
+                try {
+                    localStorage.setItem("shopsphere_user_addresses", JSON.stringify(nextAddresses));
+                } catch (e) {}
 
                 setNotice("Address updated successfully!");
-
 
             } else {
 
@@ -210,23 +261,24 @@ export default function DeliveryAddressPage() {
                     throw new Error(data.message || "Address insertion failed");
                 }
 
-                // Use the actual ID generated by MySQL
+                // Use the actual ID generated by MySQL or store
                 const newAddress = {
                     ...cleaned,
-                    id: data.insertedId,
+                    id: data.insertedId || Date.now(),
                     userID: "USR1001"
                 };
 
-                setAddresses(current => [...current, newAddress]);
+                const nextAddresses = [...addresses, newAddress];
+                setAddresses(nextAddresses);
                 setSelectedId(newAddress.id);
+                try {
+                    localStorage.setItem("shopsphere_user_addresses", JSON.stringify(nextAddresses));
+                } catch (e) {}
 
                 setNotice("Address added successfully!");
             }
 
-
             setShowForm(false);
-
-            window.location.reload();
 
         } catch (error) {
             console.error("Address update failed:", error);
@@ -265,11 +317,6 @@ export default function DeliveryAddressPage() {
             isDefault: false,
         };
 
-        // We can temporarily select it directly via `setSelectedId` or handle it in state.
-        // Since selectedAddress looks up by id in `addresses`, let's temporarily append it
-        // or set a dedicated `tempSelectedAddress` state. Or simpler: add it to addresses
-        // as a non-saved item, OR store it directly as the selected delivery target!
-        // To keep it clean without permanently polluting saved cards:
         setAddresses((current) => [...current, tempAddress]);
         setSelectedId(tempAddress.id);
         setNotice("Using this address temporarily for this order (not saved to profile).");
@@ -280,37 +327,49 @@ export default function DeliveryAddressPage() {
         const remaining = addresses.filter((address) => address.id !== id);
         setAddresses(remaining);
         if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+        try {
+            localStorage.setItem("shopsphere_user_addresses", JSON.stringify(remaining));
+        } catch (e) {}
         setNotice("Address removed.");
 
         // Removing the address from Database
-        const response = await fetch("/api/RemoveAddress", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({addressID: id, userID: addresses[0].userID})
-        });
-
+        try {
+            await fetch("/api/RemoveAddress", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ addressID: id, userID: addresses[0]?.userID || "USR1001" })
+            });
+        } catch (e) {
+            console.warn("Could not sync remove to backend:", e);
+        }
     }
 
     async function setDefaultAddress(id) {
-        setAddresses((current) =>
-            current.map((address) => ({ ...address, isDefault: address.id === id }))
-        );
+        const updated = addresses.map((address) => ({ ...address, isDefault: address.id === id }));
+        setAddresses(updated);
+        setSelectedId(id);
+        try {
+            localStorage.setItem("shopsphere_user_addresses", JSON.stringify(updated));
+        } catch (e) {}
         setNotice("Default address updated.");
 
         // Updating to database
-        const response = await fetch("/api/UpdateDefaultAddress", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                defaultAddressID: id,
-                userID: addresses[0].userID
-            })
-        });
-
+        try {
+            await fetch("/api/UpdateDefaultAddress", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    defaultAddressID: id,
+                    userID: addresses[0]?.userID || "USR1001"
+                })
+            });
+        } catch (e) {
+            console.warn("Could not sync default to backend:", e);
+        }
     }
 
     function continueToDelivery() {
